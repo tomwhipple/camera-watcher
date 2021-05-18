@@ -5,8 +5,10 @@ import json
 import argparse
 
 from pathlib import PurePath
+from PIL import Image, ImageDraw
 
 DEFAULT_WORKING_DIR = PurePath('/etc/opt/kerberosio/capture/')
+GREEN = (0, 255, 0)
 
 def write_event_jsonl(parsed_event, working_directory=DEFAULT_WORKING_DIR):
 
@@ -20,7 +22,16 @@ def write_event_jsonl(parsed_event, working_directory=DEFAULT_WORKING_DIR):
     single_event_log.close()
 
 def annotate_jpg(parsed_event, working_directory=DEFAULT_WORKING_DIR):
-    print(str(parsed_event['regionCoordinates']) + "\n")
+    infile = str(PurePath(working_directory).joinpath(parsed_event['pathToImage']))
+    outname = str(PurePath(infile).stem) + ".annotated.jpg"
+    outfile = str(PurePath(working_directory).joinpath(outname))
+
+    with Image.open(infile) as im:
+        draw = ImageDraw.Draw(im)
+        draw.rectangle(parsed_event['regionCoordinates'], fill=None, outline=GREEN, width=2)
+
+        im.save(outfile, "JPEG")
+
 
 def process_line(raw_json_line, args, write_jsonl=True):
     parsed_event = json.loads(raw_json_line)
