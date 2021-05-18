@@ -5,18 +5,11 @@ import json
 
 from pathlib import PurePath
 
-EVENT_LOG_FILE = '/etc/opt/kerberosio/capture/video_event_log.txt'
-EVENT_LOG_DIR = PurePath(EVENT_LOG_FILE).parent
+EVENT_LOG_DIR = PurePath('/etc/opt/kerberosio/capture/')
 
 def main():
     capture_data = sys.argv[1:]
 
-    with open(EVENT_LOG_FILE, 'a+') as event_log:
-        event_log.write(str(capture_data))
-        event_log.write("\n")
-
-    event_log.close()
-    
     parsed_event = json.loads(capture_data[0])
 
     event_name = PurePath(parsed_event['pathToVideo']).stem
