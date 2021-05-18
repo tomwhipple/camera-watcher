@@ -12,7 +12,7 @@ def write_event_jsonl(parsed_event, working_directory=DEFAULT_WORKING_DIR):
 
     event_name = PurePath(parsed_event['pathToVideo']).stem
 
-    event_jsonl_file = str(EVENT_LOG_DIR.joinpath(event_name + '.jsonl'))
+    event_jsonl_file = str(PurePath(working_directory).joinpath(event_name + '.jsonl'))
     with open(event_jsonl_file, 'a+') as single_event_log:
         single_event_log.write(json.dumps(parsed_event, sort_keys=True))
         single_event_log.write("\n")
@@ -47,7 +47,7 @@ def main():
             for raw_json in f:
                 process_line(raw_json, args, write_jsonl=False)
     else:
-        process_line(args.raw_json, args, write_jsonl=True)
+        process_line(args.raw_json[0], args, write_jsonl=True)
 
 
 if __name__ == "__main__":
