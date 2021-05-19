@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
 
-/etc/opt/kerberosio/scripts/process_capture.py $@
+# Why can't kerberos launch a Python script?!?
+
+/etc/opt/kerberosio/scripts/record_kerberos_metadata.py $@
