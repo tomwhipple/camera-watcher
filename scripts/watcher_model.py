@@ -11,7 +11,7 @@ from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
-class EventObservation(Base, json.JSONEncoder):
+class EventObservation(Base):
 	__tablename__ = 'event_observations'
 	id = Column(BigInteger, primary_key=True)
 	video_file = Column(String)
@@ -20,16 +20,14 @@ class EventObservation(Base, json.JSONEncoder):
 
 	classifications = relationship("EventClassification", back_populates='observation')
 
-	def default(self, o):
-		import pdb; pdb.set_trace()
-		try:
-			iterable = iter(o)
-		except TypeError:
-			pass
-		else:
-			return list(iterable)
-		# Let the base class default method raise the TypeError
-		return json.JSONEncoder.default(self, o)
+	def api_response_dict(self):
+		return {
+			'id': self.id,
+			'video_file': self.video_file,
+			'capture_time': str(self.capture_time),
+			'scene_name': self.scene_name
+		}
+
 
 class Usefullness(enum.Enum):
 	INTERESTING = 1
@@ -45,5 +43,14 @@ class EventClassification(Base):
 	confidence = Column(Float)
 
 	observation = relationship("EventObservation", back_populates='classifications')
+
+	def api_response_dict(self):
+		return {
+			'id': self.id,
+			'usefullness': str(self.usefullness),
+			'decider': self.decider,
+			'decision_time': str(self.decision_time),
+			'confidence': self.confidence
+		}
 
 

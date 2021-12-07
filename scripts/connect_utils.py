@@ -99,36 +99,6 @@ def init_connection_engine(ssh_tunnel=None):
 		return init_tcp_connection_engine(db_config)
 	return init_unix_connection_engine(db_config)
 
-# def init_ssh_connection_engine(db_config):
-# 	db_user = os.environ["DB_USER"]
-# 	db_pass = os.environ["DB_PASS"]
-# 	db_name = os.environ["DB_NAME"]
-# 	db_host = os.environ["DB_HOST"]
-	
-# 	db_ssh_host = os.environ["DB_SSH_HOST"]
-# 	db_ssh_user = os.environ["DB_SSH_USER"]
-# 	db_ssh_private_key_file = os.environ.get("DB_SSH_PRIVATE_KEY_FILE", "~/.ssh/id_rsa")
-
-# 	# Extract port from db_host if present,
-# 	# otherwise use DB_PORT environment variable.
-# 	host_args = db_host.split(":")
-# 	if len(host_args) == 1:
-# 		db_hostname = host_args[0]
-# 		db_port = int(os.environ.get("DB_PORT",3306))
-# 	elif len(host_args) == 2:
-# 		db_hostname, db_port = host_args[0], int(host_args[1])
-
-# 	tunnel = SSHTunnelForwarder(
-# 			(db_ssh_host,22),
-# 			ssh_username=db_ssh_user,
-# 			ssh_pkey=db_ssh_private_key_file,
-# 			remote_bind_address=('127.0.0.1',db_port),
-# 			local_bind_address=('127.0.0.1',db_port),
-# 		)
-
-# 	tunnel.start()
-# 	return init_tcp_connection_engine(db_config)
-
 
 def init_tcp_sslcerts_connection_engine(db_config):
 	# [START cloud_sql_mysql_sqlalchemy_create_tcp_sslcerts]
