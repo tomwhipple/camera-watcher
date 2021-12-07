@@ -7,7 +7,30 @@ from sqlalchemy.orm import Session
 
 from sshtunnel import SSHTunnelForwarder
 
+class TunneledConnection(object):
+	def __init__(self):
+		self.tunnel = get_ssh_tunnel()
+		self.connection = None
+
+	def __enter__(self):
+		if self.tunnel:
+			self.tunnel.start()
+		self.engine = init_connection_engine(self.tunnel)
+		self.connection = self.engine.connect()
+		return self.connection
+
+	def __exit__(self, *args):
+		self.connection.close()
+		if self.tunnel:
+			self.tunnel.close()
+
+	def connection(self):
+		return self.connection
+
 def get_ssh_tunnel():
+	if not os.environ.get("DB_SSH_HOST"):
+		return
+
 	db_user = os.environ["DB_USER"]
 	db_pass = os.environ["DB_PASS"]
 	db_name = os.environ["DB_NAME"]
