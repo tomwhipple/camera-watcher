@@ -22,7 +22,7 @@ class EventObservation(Base):
 
 	def api_response_dict(self):
 		return {
-			'id': self.id,
+			'event_observation_id': self.id,
 			'video_file': self.video_file,
 			'capture_time': str(self.capture_time),
 			'scene_name': self.scene_name
@@ -46,7 +46,7 @@ class EventClassification(Base):
 
 	def api_response_dict(self):
 		return {
-			'id': self.id,
+			'event_classification_id': self.id,
 			'usefullness': str(self.usefullness),
 			'decider': self.decider,
 			'decision_time': str(self.decision_time),
