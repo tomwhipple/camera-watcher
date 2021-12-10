@@ -21,8 +21,8 @@ def upload_event_in_file(session, filename, move_on_completion=True):
 		session.add(EventObservation(
 				video_file=parsed_event['pathToVideo'],
 				scene_name=parsed_event['instanceName'],
-				capture_time=datetime.fromtimestamp(int(parsed_event['timestamp']))
-
+				capture_time=datetime.fromtimestamp(int(parsed_event['timestamp'])),
+				storage_local=True
 			))
 		if move_on_completion:
 			basedir = os.path.dirname(filename)
@@ -54,7 +54,7 @@ def main():
 	parser = argparse.ArgumentParser(description='Upload events to database')
 	parser.add_argument('action')
 	parser.add_argument('-d', '--input_directory', type=pathlib.Path)
-	parser.add_argument('-f', '--file', type=argparse.FileType('r'))
+	parser.add_argument('-f', '--file', type=pathlib.Path)
 	parser.add_argument('-l', '--limit', type=int)
 	parser.add_argument('--move_completed', action='store_true')
 
@@ -64,9 +64,9 @@ def main():
 		session = sqlalchemy.orm.Session(tc)
 
 		if args.action == 'upload_file':
-			upload_event_in_file(session, args.file)
+			upload_event_in_file(session, str(args.file), args.move_completed)
 		elif args.action == 'upload_dir':
-			upload_events_in_directory(session, args.input_directory, args.move_completed, args.limit)
+			upload_events_in_directory(session, str(args.input_directory), args.move_completed, args.limit)
 		else:
 			print("No action specified.")
 

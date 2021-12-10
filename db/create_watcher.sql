@@ -19,3 +19,7 @@ CREATE TABLE IF NOT EXISTS event_classifications (
 		REFERENCES event_observations(id)
 		ON DELETE CASCADE
 );
+
+ALTER TABLE event_observations
+	ADD COLUMN IF NOT EXISTS storage_local BOOLEAN null,
+ 	ADD COLUMN IF NOT EXISTS storage_gcloud BOOLEAN null;
