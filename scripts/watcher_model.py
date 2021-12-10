@@ -3,11 +3,11 @@ import json
 
 import sqlalchemy
 
-from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Enum
+from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Enum, Boolean
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 
-
+BASE_URL="http://raspberrypi4.local/"
 
 Base = declarative_base()
 
@@ -18,6 +18,9 @@ class EventObservation(Base):
 	capture_time = Column(DateTime)
 	scene_name = Column(String)
 
+	storage_local = Column(Boolean)
+	storage_gcloud = Column(Boolean)
+
 	classifications = relationship("EventClassification", back_populates='observation')
 
 	def api_response_dict(self):
@@ -25,7 +28,8 @@ class EventObservation(Base):
 			'event_observation_id': self.id,
 			'video_file': self.video_file,
 			'capture_time': self.capture_time.isoformat(),
-			'scene_name': self.scene_name
+			'scene_name': self.scene_name,
+			'video_url': BASE_URL + self.scene_name + "/capture/" + self.video_file
 		}
 
 
