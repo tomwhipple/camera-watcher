@@ -13,7 +13,7 @@ from sshtunnel import SSHTunnelForwarder
 import connect_utils
 from connect_utils import TunneledConnection
 
-query_uncategorized_sql = "select * from event_observations obs where obs.id not in (select distinct observation_id from event_classifications) order by rand() limit 10"
+query_uncategorized_sql = "select * from event_observations obs where obs.id not in (select distinct observation_id from event_classifications) order by rand() limit 3"
 
 def get_uncategorized(request):
 	obs_out = []

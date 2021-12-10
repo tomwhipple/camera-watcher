@@ -24,7 +24,7 @@ class EventObservation(Base):
 		return {
 			'event_observation_id': self.id,
 			'video_file': self.video_file,
-			'capture_time': str(self.capture_time),
+			'capture_time': self.capture_time.isoformat(),
 			'scene_name': self.scene_name
 		}
 
@@ -49,8 +49,8 @@ class EventClassification(Base):
 			'event_classification_id': self.id,
 			'usefullness': str(self.usefullness),
 			'decider': self.decider,
-			'decision_time': str(self.decision_time),
-			'confidence': self.confidence
+			'decision_time': self.decision_time.isoformat(),
+			'confidence': self.confidence,
 		}
 
 
