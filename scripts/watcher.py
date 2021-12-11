@@ -33,7 +33,7 @@ def upload_event_in_file(session, filename, move_on_completion=True):
 
         #print(parsed_event['pathToVideo'])
 
-    print filename
+    print(filename)
 
 def upload_events_in_directory(session, basedir, limit, move_on_completion=False):
     filelist = []
