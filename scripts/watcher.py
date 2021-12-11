@@ -26,7 +26,7 @@ def upload_event_in_file(session, filename):
         ))
 
     # this causes output that can be piped to another utility, eg
-    # xargs -I {} mv {} /completion_dir
+    # xargs -I{} mv {} /completion_dir
     print filename
 
 def upload_events_in_directory(session, basedir, limit):
