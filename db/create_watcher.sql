@@ -23,3 +23,6 @@ CREATE TABLE IF NOT EXISTS event_classifications (
 ALTER TABLE event_observations
 	ADD COLUMN IF NOT EXISTS storage_local BOOLEAN null,
  	ADD COLUMN IF NOT EXISTS storage_gcloud BOOLEAN null;
+ 	
+ALTER TABLE event_observations
+	ADD UNIQUE INDEX idx_video_file (video_file);
