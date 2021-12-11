@@ -15,27 +15,21 @@ from watcher_model import EventObservation
 from connect_utils import TunneledConnection
 
 
-def upload_event_in_file(session, filename, move_on_completion=True):
+def upload_event_in_file(session, filename):
     with open(filename) as fp:
         parsed_event = json.loads(fp.readline())
         session.add(EventObservation(
-                video_file=parsed_event['pathToVideo'],
-                scene_name=parsed_event['instanceName'],
-                capture_time=datetime.fromtimestamp(int(parsed_event['timestamp'])),
-                storage_local=True
-            ))
-        if move_on_completion:
-            basedir = os.path.dirname(filename)
-            dest_dir = os.path.join(basedir, "processed_jsonl")
-            os.makedirs(dest_dir,exist_ok=True)
-            dest_file = os.path.join(dest_dir, os.path.basename(file))
-            os.rename(file, dest_file)
+            video_file=parsed_event['pathToVideo'],
+            scene_name=parsed_event['instanceName'],
+            capture_time=datetime.fromtimestamp(int(parsed_event['timestamp'])),
+            storage_local=True
+        ))
 
-        #print(parsed_event['pathToVideo'])
-
+    # this causes output that can be piped to another utility, eg
+    # xargs -I {} mv {} /completion_dir
     print filename
 
-def upload_events_in_directory(session, basedir, limit, move_on_completion=False):
+def upload_events_in_directory(session, basedir, limit):
     filelist = []
 
     for filename in os.listdir(basedir):
@@ -45,7 +39,7 @@ def upload_events_in_directory(session, basedir, limit, move_on_completion=False
                 break
 
     for file in filelist:
-        upload_event_in_file(session, file, move_on_completion)
+        upload_event_in_file(session, file)
 
 
 #def mark_local_files(session, basedir):
@@ -58,7 +52,6 @@ def main():
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
     parser.add_argument('-l', '--limit', type=int)
-    parser.add_argument('--move_completed', action='store_true')
 
     args = parser.parse_args()
 
@@ -66,9 +59,9 @@ def main():
         session = sqlalchemy.orm.Session(tc)
 
         if args.action == 'upload_file':
-            upload_event_in_file(session, str(args.file), args.move_completed)
+            upload_event_in_file(session, str(args.file))
         elif args.action == 'upload_dir':
-            upload_events_in_directory(session, str(args.input_directory), args.move_completed, args.limit)
+            upload_events_in_directory(session, str(args.input_directory), args.limit)
         else:
             print("No action specified.")
 
