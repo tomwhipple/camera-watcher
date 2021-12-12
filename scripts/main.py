@@ -26,9 +26,12 @@ def api_response_for_context(obj):
     else:
         return jsonify(obj)
 
+@app.route("/")
+def hello():
+    return "Hello there!\n"
+
 @app.route("/get_uncategorized")
 def get_uncategorized(request=None, context=None):
-    # import pdb; pdb.set_trace()
     obs_out = []
 
     #with connect_utils.get_ssh_tunnel() as tunnel, connect_utils.init_connection_engine(tunnel).begin() as connection:
