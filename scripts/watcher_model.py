@@ -7,7 +7,8 @@ from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, 
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 
-BASE_URL="http://raspberrypi4.local/"
+#BASE_URL="http://raspberrypi4.local/"
+BASE_URL="https://home.tomwhipple.com/"
 
 Base = declarative_base()
 
