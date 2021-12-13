@@ -41,9 +41,7 @@ def upload_events_in_directory(session, basedir, limit):
     for file in filelist:
         upload_event_in_file(session, file)
 
-
-#def mark_local_files(session, basedir):
-
+def record_kerberos_event(session, jsonl_directory):
 
 
 def main():
@@ -62,6 +60,8 @@ def main():
             upload_event_in_file(session, str(args.file))
         elif args.action == 'upload_dir':
             upload_events_in_directory(session, str(args.input_directory), args.limit)
+        elif args.action == 'debug':
+            import pdb; pdb.set_trace()
         else:
             print("No action specified.")
 
