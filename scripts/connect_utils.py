@@ -54,23 +54,15 @@ def get_config(section_name, file='None'):
         'db_user': get_config_val(config,'DB_USER'),
         'db_pass': get_config_val(config,'DB_PASS'),
         'db_name': get_config_val(config,'DB_NAME'),
+        'db_port': int(get_config_val(config,'DB_PORT',3306)),
 
         'db_ssh_host': get_config_val(config,"DB_SSH_HOST"),
         'db_ssh_user': get_config_val(config,"DB_SSH_USER"),
         'db_ssh_private_key_file': get_config_val(config,"DB_SSH_PRIVATE_KEY_FILE", "~/.ssh/id_rsa"),
 
-        'db_socket_dir': get_config_val(config, "/var/run/mysqld"),
+        'db_socket_dir': get_config_val(config, "DB_SOCKET_DIR", "/var/run/mysqld"),
         'db_connection_name': get_config_val(config,"INSTANCE_CONNECTION_NAME", "mysqld.sock"),
     }
-
-    # Extract port from db_host if present,
-    # otherwise use DB_PORT environment variable.
-    host_args = db_config['db_host'].split(":")
-    db_config['db_host'] = host_args[0]
-    if len(host_args) == 1:
-        db_config['db_port'] = int(get_config_val(config,"DB_PORT",3306))
-    elif len(host_args) == 2:
-        db_config['db_port'] = int(host_args[1])
 
     if get_config_val(config,'DB_CERT'):
         db_config['ssl_args'] = {
@@ -180,7 +172,7 @@ def init_unix_connection_engine(db_config):
             query={
                 "unix_socket": "{}/{}".format(
                     db_config['db_socket_dir'],  # e.g. "/cloudsql
-                    db_config['instance_connection_name'])  # i.e "<PROJECT-NAME>:<INSTANCE-REGION>:<INSTANCE-NAME>"
+                    db_config['db_connection_name'])  # i.e "<PROJECT-NAME>:<INSTANCE-REGION>:<INSTANCE-NAME>"
             }
         ),
         **db_config['connection_config']
