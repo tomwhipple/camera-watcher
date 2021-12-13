@@ -19,7 +19,6 @@ query_uncategorized_sql = "select * from event_observations obs where obs.storag
 app = Flask("watcher")
 is_cli = None
 
-JSONIFY_PRETTYPRINT_REGULAR = True
 def api_response_for_context(obj):
     if is_cli:
         return json.dumps(obj, indent=2)
