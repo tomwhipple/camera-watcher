@@ -21,16 +21,20 @@ DEFAULT_WORKING_DIR = PurePath('/etc/opt/kerberosio/capture/')
 def upload_event_in_file(session, filename):
     with open(filename) as fp:
         parsed_event = json.loads(fp.readline())
-        session.add(EventObservation(
-            video_file=parsed_event['pathToVideo'],
-            scene_name=parsed_event['instanceName'],
-            capture_time=datetime.fromtimestamp(int(parsed_event['timestamp'])),
-            storage_local=True
-        ))
+        existing = session.execute(select(EventObservation).where(EventObservation.video_file == parsed_event['pathToVideo'])).all()
 
-    # this causes output that can be piped to another utility, eg
-    # xargs -I{} mv {} /completion_dir
-    print(filename)
+        if len(existing) == 0: 
+            session.add(EventObservation(
+                video_file=parsed_event['pathToVideo'],
+                scene_name=parsed_event['instanceName'],
+                capture_time=datetime.fromtimestamp(int(parsed_event['timestamp'])),
+                storage_local=True
+            ))
+
+            # this causes output that can be piped to another utility, eg
+            # xargs -I{} mv {} /completion_dir
+            print(filename)
+
 
 def upload_events_in_directory(session, basedir, limit):
     filelist = []

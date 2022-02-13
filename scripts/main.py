@@ -27,13 +27,11 @@ def api_response_for_context(obj):
 
 @app.route("/")
 def hello():
-    return "Hello there!\n"
+    return "Hi, we're watching you.\n"
 
 @app.route("/get_uncategorized")
 def get_uncategorized(request=None, context=None):
     obs_out = []
-
-    #with connect_utils.get_ssh_tunnel() as tunnel, connect_utils.init_connection_engine(tunnel).begin() as connection:
 
     with TunneledConnection() as tc:
 
