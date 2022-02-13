@@ -45,8 +45,14 @@ def upload_events_in_directory(session, basedir, limit):
             if limit and len(filelist) >= limit:
                 break
 
+    counter = 0
     for file in filelist:
         upload_event_in_file(session, file)
+
+        if counter % 25 == 0:
+            session.commit()
+
+        counter += 1
 
 
 def write_event_jsonl(parsed_event, working_directory=DEFAULT_WORKING_DIR):
