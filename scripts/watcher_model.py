@@ -1,11 +1,16 @@
 import enum
 import json
+import random
+import string
 
 import sqlalchemy
 
 from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Enum, Boolean
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
+
+#from passlib.apps import custom_app_context as pwd_context
+from passlib.hash import pbkdf2_sha256
 
 #BASE_URL="http://raspberrypi4.local/"
 BASE_URL="https://home.tomwhipple.com/"
@@ -58,4 +63,18 @@ class EventClassification(Base):
             'confidence': self.confidence,
         }
 
+class APIUser(Base):
+    __tablename__ = 'api_users'
+    id = Column(BigInteger, primary_key=True)
+    username = Column(String(128),index = True)
+    key_hash = Column(String(256))
 
+    def reset_key(self):
+        newkey = ''.join(random.choice(string.ascii_letters + string.digits) for i in range(16))
+        self.key_hash = pbkdf2_sha256.hash(newkey)
+
+        return newkey
+
+    def verify_key(self, input_str):
+        return pbkdf2_sha256.verify(input_str, self.key_hash)
+        

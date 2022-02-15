@@ -14,6 +14,7 @@ from sqlalchemy import select
 
 import watcher_model
 from watcher_model import EventObservation
+from watcher_model import APIUser
 from connect_utils import TunneledConnection
 
 DEFAULT_WORKING_DIR = PurePath('/etc/opt/kerberosio/capture/')
@@ -80,13 +81,28 @@ def record_kerberos_event(session, input_json, jsonl_directory=DEFAULT_WORKING_D
         ))
     write_event_jsonl(parsed_event, jsonl_directory)
 
+def set_user_key(session, username):
+    user = session.query(APIUser).filter_by(username = username).first()
+    if not user:
+        user = APIUser(username = username)
+        session.add(user)
+
+    newkey = user.reset_key()
+    session.commit()
+
+    print(f"key for {username} is now {newkey}")
+    return newkey
+
+
 
 def main():
     parser = argparse.ArgumentParser(description='Upload events to database')
-    parser.add_argument('action')
+    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
     parser.add_argument('-l', '--limit', type=int)
+    parser.add_argument('-u', '--set_user', help='generate a key for the given user, adding them if required')
+    parser.add_argument('-D', '--debug', action='store_true')
     parser.add_argument('raw_json', nargs='*')
 
     args = parser.parse_args()
@@ -94,14 +110,17 @@ def main():
     with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(tc)
 
-        if args.action == 'upload_file':
+        if args.debug: 
+            import pdb; pdb.set_trace()
+
+        if args.set_user:
+            set_user_key(session, str(args.set_user))
+        elif args.action == 'upload_file':
             upload_event_in_file(session, str(args.file))
         elif args.action == 'upload_dir':
             upload_events_in_directory(session, str(args.input_directory), args.limit)
         elif args.action == 'record_kerberos':
             record_kerberos_event(session, args.raw_json, args.input_directory)
-        elif args.action == 'debug':
-            import pdb; pdb.set_trace()
         else:
             print("No action specified.")
 

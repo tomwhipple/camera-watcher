@@ -25,4 +25,10 @@ ALTER TABLE event_observations
  	ADD COLUMN IF NOT EXISTS storage_gcloud BOOLEAN null;
  	
 ALTER TABLE event_observations
-	ADD UNIQUE INDEX idx_video_file (video_file);
+	ADD UNIQUE INDEX IF NOT EXISTS idx_video_file (video_file);
+	
+CREATE TABLE IF NOT EXISTS api_users (
+	id SERIAL,
+	username VARCHAR(128),
+	key_hash VARCHAR(256)
+);
