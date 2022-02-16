@@ -93,4 +93,4 @@ def verify_password(username, key):
 
 if __name__ == "__main__":
     is_cli = True
-    print(get_uncategorized(None))
+    print(hello())
