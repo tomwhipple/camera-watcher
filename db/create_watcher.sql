@@ -32,3 +32,10 @@ CREATE TABLE IF NOT EXISTS api_users (
 	username VARCHAR(128),
 	key_hash VARCHAR(256)
 );
+
+ALTER TABLE event_classifications DROP COLUMN IF EXISTS usefullness;
+ALTER TABLE event_classifications ADD COLUMN IF NOT EXISTS label varchar(20);
+
+ALTER TABLE event_classifications ADD UNIQUE labeling (observation_id, label, decider);
+
+ALTER TABLE event_classifications MODIFY COLUMN label varchar(20) NOT NULL;

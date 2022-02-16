@@ -9,10 +9,8 @@ from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, 
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 
-#from passlib.apps import custom_app_context as pwd_context
 from passlib.hash import pbkdf2_sha256
 
-#BASE_URL="http://raspberrypi4.local/"
 BASE_URL="https://home.tomwhipple.com/"
 
 Base = declarative_base()
@@ -39,15 +37,11 @@ class EventObservation(Base):
         }
 
 
-class Usefullness(enum.Enum):
-    INTERESTING = 1
-    BACKGROUND = 2
-
 class EventClassification(Base):
     __tablename__ = 'event_classifications'
     id = Column(BigInteger, primary_key=True)
     observation_id = Column(BigInteger, ForeignKey('event_observations.id'))
-    usefullness = Column(Enum(Usefullness))
+    label = Column(String)
     decider = Column(String)
     decision_time = Column(DateTime)
     confidence = Column(Float)
@@ -56,8 +50,9 @@ class EventClassification(Base):
 
     def api_response_dict(self):
         return {
-            'event_classification_id': self.id,
-            'usefullness': str(self.usefullness),
+            'classification_id': self.id,
+            'observation_id': self.observation.id,
+            'label': self.label,
             'decider': self.decider,
             'decision_time': self.decision_time.isoformat(),
             'confidence': self.confidence,
@@ -77,4 +72,3 @@ class APIUser(Base):
 
     def verify_key(self, input_str):
         return pbkdf2_sha256.verify(input_str, self.key_hash)
-        
