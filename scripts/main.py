@@ -59,7 +59,7 @@ def get_labels():
 		for l in session.execute(stmt).fetchall():
 			labels.append(l[0])
 
-		return jsonify({'labels': labels})
+		return jsonify(labels)
 
 @app.route("/classify", methods=['POST'])
 @auth.login_required
