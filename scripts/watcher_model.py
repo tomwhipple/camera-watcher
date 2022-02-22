@@ -52,7 +52,7 @@ class EventClassification(Base):
     def api_response_dict(self):
         return {
             'classification_id': self.id,
-            'observation_id': self.observation.id,
+            'event_observation_id': self.observation.id,
             'label': self.label,
             'decider': self.decider,
             'decision_time': self.decision_time.isoformat(),

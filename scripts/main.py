@@ -69,7 +69,7 @@ def classify():
 
 		for lbl in request.json.get('labels', []):
 			newClassification = EventClassification(
-				observation_id = request.json.get('observation_id'),
+				event_observation_id = request.json.get('event_observation_id'),
 				label = lbl,
 				decider = g.user.username
 			)
