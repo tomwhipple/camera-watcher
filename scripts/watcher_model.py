@@ -33,7 +33,8 @@ class EventObservation(Base):
             'video_file': self.video_file,
             'capture_time': self.capture_time.isoformat(),
             'scene_name': self.scene_name,
-            'video_url': BASE_URL + self.scene_name + "/capture/" + self.video_file
+            'video_url': BASE_URL + self.scene_name + "/capture/" + self.video_file,
+            'labels': list(map(lambda : c.label, self.classifications))
         }
 
 
