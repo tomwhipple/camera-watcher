@@ -67,13 +67,14 @@ def classify():
 	with TunneledConnection() as tc:
 		session = sqlalchemy.orm.Session(tc)
 
-		newClassification = EventClassification(
+		for lbl in request.json.get('labels', []):
+			newClassification = EventClassification(
 				observation_id = request.json.get('observation_id'),
-				label = request.json.get('label'),
+				label = lbl,
 				decider = g.user.username
 			)
+			session.add(newClassification)
 
-		session.add(newClassification)
 		session.commit()
 
 		return jsonify(newClassification.api_response_dict()), 201
