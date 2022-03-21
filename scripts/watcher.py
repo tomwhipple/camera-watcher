@@ -68,7 +68,10 @@ def write_event_jsonl(parsed_event, working_directory=DEFAULT_WORKING_DIR):
     single_event_log.close()
 
 def record_kerberos_event(session, input_json, jsonl_directory=DEFAULT_WORKING_DIR):
-    parsed_event = json.loads(input_json)
+    if isinstance(input_json, dict):
+        parsed_event = input_json
+    else:
+        parsed_event = json.loads(input_json)
 
     stmt = select(EventObservation).where(EventObservation.video_file)
     result = session.execute(stmt)
