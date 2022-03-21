@@ -87,7 +87,7 @@ def classify():
 def load_kerberos():
 	with TunneledConnection() as tc:
 		session = sqlalchemy.orm.Session(tc)
-		record_kerboeros_event(session, request.json)
+		record_kerberos_event(session, request.json)
 
 		session.commit()
 
