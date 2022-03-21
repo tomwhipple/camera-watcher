@@ -16,6 +16,8 @@ from flask import *
 
 from flask_httpauth import HTTPBasicAuth
 
+from watcher import record_kerberos_event
+
 query_uncategorized_sql = "select * from event_observations obs where obs.storage_local is True and obs.id not in (select distinct observation_id from event_classifications) order by rand() limit 20"
 query_existing_labels_sql = "select distinct label from event_classifications order by label asc"
 
@@ -78,6 +80,19 @@ def classify():
 		session.commit()
 
 		return jsonify(newClassification.api_response_dict()), 201
+
+@app.route("/load_kerberos/", methods=['POST'])
+@app.route("/load_kerberos", methods=['POST'])
+@auth.login_required
+def load_kerberos():
+	with TunneledConnection() as tc:
+		session = sqlalchemy.orm.Session(tc)
+		record_kerboeros_event(session, request.json)
+
+		session.commit()
+
+		return 202
+
 
 
 @auth.verify_password
