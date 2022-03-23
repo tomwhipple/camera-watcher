@@ -17,7 +17,8 @@ from watcher_model import EventObservation
 from watcher_model import APIUser
 from connect_utils import TunneledConnection
 
-DEFAULT_WORKING_DIR = PurePath('/etc/opt/kerberosio/capture/')
+# DEFAULT_WORKING_DIR = PurePath('/etc/opt/kerberosio/capture/')
+DEFAULT_WORKING_DIR = PurePath('//Volumes/Video Captures/wellerDriveway/capture')
 
 def upload_event_in_file(session, filename):
     with open(filename) as fp:

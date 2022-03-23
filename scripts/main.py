@@ -94,6 +94,19 @@ def load_kerberos():
 		return 202
 
 
+@app.route("/observations/", methods=['POST'])
+@app.route("/observations", methods=['POST'])
+@auth.login_required
+def create_event_observation():
+	with TunneledConnection() as tc:
+		session = sqlalchemy.orm.Session(tc)
+
+		new_observation = EventObservation(request.json)
+
+		session.add(new_observation)
+		session.commit()
+
+		return jsonify(new_observation.api_response_dict()), 201
 
 @auth.verify_password
 def verify_password(username, key):

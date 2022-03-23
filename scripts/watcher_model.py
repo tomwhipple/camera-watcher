@@ -11,7 +11,11 @@ from sqlalchemy.orm import relationship
 
 from passlib.hash import pbkdf2_sha256
 
+from pathlib import Path
+from datetime import datetime
+
 BASE_URL="https://home.tomwhipple.com/"
+BASE_DIR="/data/video"
 
 Base = declarative_base()
 
@@ -24,18 +28,38 @@ class EventObservation(Base):
 
     storage_local = Column(Boolean)
     storage_gcloud = Column(Boolean)
+    video_location = Column(String)
 
     classifications = relationship("EventClassification", back_populates='observation')
 
     def api_response_dict(self):
+        url = BASE_URL + self.scene_name
+
+        if self.video_location and self.storage_local:
+            url += self.video_location.removeprefix(BASE_DIR) + '/' + self.video_file
+        else:
+            url += "/capture/" + self.video_file
+
         return {
             'event_observation_id': self.id,
             'video_file': self.video_file,
             'capture_time': self.capture_time.isoformat(),
             'scene_name': self.scene_name,
-            'video_url': BASE_URL + self.scene_name + "/capture/" + self.video_file,
+            'video_url': url,
             'labels': list(map(lambda : c.label, self.classifications))
         }
+
+    def __init__(self, input):
+        self.video_file = input.get('video_file')
+        video_fullpath = input.get('video_fullpath')
+        if video_fullpath:
+            p = Path(video_fullpath)
+            self.video_file = str(p.name)
+            self.video_location = str(p.parent)
+        self.storage_local = True
+
+        self.capture_time = datetime.fromisoformat(input.get('capture_time'))
+        self.scene_name = input.get('scene_name')
 
 
 class EventClassification(Base):
