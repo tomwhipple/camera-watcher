@@ -39,3 +39,5 @@ ALTER TABLE event_classifications ADD COLUMN IF NOT EXISTS label varchar(20);
 ALTER TABLE event_classifications ADD UNIQUE labeling (observation_id, label, decider);
 
 ALTER TABLE event_classifications MODIFY COLUMN label varchar(20) NOT NULL;
+
+ALTER TABLE event_observations ADD COLUMN IF NOT EXISTS video_location varchar(100);
