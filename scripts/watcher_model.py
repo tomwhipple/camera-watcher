@@ -33,12 +33,12 @@ class EventObservation(Base):
     classifications = relationship("EventClassification", back_populates='observation')
 
     def api_response_dict(self):
-        url = BASE_URL + self.scene_name
+        url = BASE_URL 
 
         if self.video_location and self.storage_local:
             url += self.video_location.removeprefix(BASE_DIR) + '/' + self.video_file
         else:
-            url += "/capture/" + self.video_file
+            url += self.scene_name + "/capture/" + self.video_file
 
         return {
             'event_observation_id': self.id,
