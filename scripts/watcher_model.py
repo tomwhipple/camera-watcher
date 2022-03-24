@@ -70,6 +70,7 @@ class EventClassification(Base):
     decider = Column(String)
     decision_time = Column(DateTime)
     confidence = Column(Float)
+    is_deprecated = Column(Boolean)
 
     observation = relationship("EventObservation", back_populates='classifications')
 

@@ -19,7 +19,6 @@ from flask_httpauth import HTTPBasicAuth
 from watcher import record_kerberos_event
 
 query_uncategorized_sql = "select * from event_observations obs where obs.storage_local is True and obs.id not in (select distinct observation_id from event_classifications) order by rand() limit 20"
-query_existing_labels_sql = "select distinct label from event_classifications order by label asc"
 
 app = Flask("watcher")
 auth = HTTPBasicAuth()
@@ -56,7 +55,7 @@ def get_labels():
 	with TunneledConnection() as tc:
 		session = sqlalchemy.orm.Session(tc)
 
-		stmt = select(EventClassification.label).distinct()
+		stmt = select(EventClassification.label).distinct().where(EventClassification.is_deprecated == None)
 		labels = []
 		for l in session.execute(stmt).fetchall():
 			labels.append(l[0])
