@@ -6,3 +6,11 @@ select label, count(*) from event_classifications where is_deprecated is null GR
 update event_classifications set is_deprecated = true where label in ('night', 'driveby', 'walkby', 'wind', 'driveway activity', 'cloud change', 'arrive', 'departure', 're-adjust camera', 'lighting change');
 update event_classifications set label = 'precipitation' where  label in ('snow', 'rain');
 update event_classifications set label = 'lights, decorative' where label = 'lights- christmas';
+
+select distinct label from event_classifications where (label like '% %') and is_deprecated is null;
+
+update event_classifications set label = 'pedestrian' where label = 'pedestrian ';
+update event_classifications set label = 'bicycle' where label = 'bicycle ';
+update event_classifications set label = 'tree-branches' where label = 'tree branches';
+update event_classifications set label = 'lights-decorative' where label = 'lights, decorative';
+update event_classifications set label = 'lighting-scene' where label = 'lighting, scene' ;
