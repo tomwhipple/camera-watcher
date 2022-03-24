@@ -15,7 +15,7 @@ from pathlib import Path
 from datetime import datetime
 
 BASE_URL="https://home.tomwhipple.com/"
-BASE_DIR="/data/video"
+BASE_DIR="/data/video/"
 
 Base = declarative_base()
 
