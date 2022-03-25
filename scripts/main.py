@@ -24,6 +24,11 @@ app = Flask("watcher")
 auth = HTTPBasicAuth()
 is_cli = None
 
+@app.before_request
+def log_request_info():
+    #app.logger.debug('Headers: %s', request.headers)
+    app.logger.debug('Body: %s', request.get_data())
+
 def api_response_for_context(obj):
     if is_cli:
         return json.dumps(obj, indent=2)
@@ -97,6 +102,9 @@ def load_kerberos():
 @app.route("/observations", methods=['POST'])
 @auth.login_required
 def create_event_observation():
+	if request.json.get('filetype') == 16:
+		return jsonify("debug movies not accepted"), 400
+
 	with TunneledConnection() as tc:
 		session = sqlalchemy.orm.Session(tc)
 

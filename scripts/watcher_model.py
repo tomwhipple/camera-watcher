@@ -5,7 +5,7 @@ import string
 
 import sqlalchemy
 
-from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Enum, Boolean
+from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Enum, Boolean, Integer
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -19,6 +19,31 @@ BASE_DIR="/data/video/"
 
 Base = declarative_base()
 
+class MotionEvent(Base):
+    __tablename__ = 'motion_events'
+    id = Column(BigInteger, primary_key=True)
+    observation_id = Column(BigInteger, ForeignKey('event_observations.id'))
+
+    frame = Column(BigInteger)
+    x = Column(Integer)
+    y = Column(Integer)
+    width = Column(Integer)
+    height = Column(Integer)
+    pixels = Column(Integer)
+    noise = Column(Float)
+
+    observation = relationship("EventObservation", back_populates='motions')
+
+    def __init__(self, dict):
+        self.frame = dict.get('frame')
+        self.x = dict.get('x')
+        self.y = dict.get('y')
+        self.width = dict.get('width')
+        self.height = dict.get('height')
+        self.pixels = dict.get('pixels')
+        self.noise = dict.get('noise') 
+
+
 class EventObservation(Base):
     __tablename__ = 'event_observations'
     id = Column(BigInteger, primary_key=True)
@@ -31,6 +56,7 @@ class EventObservation(Base):
     video_location = Column(String)
 
     classifications = relationship("EventClassification", back_populates='observation')
+    motions = relationship("MotionEvent", back_populates='observation')
 
     def api_response_dict(self):
         url = BASE_URL 
@@ -60,6 +86,10 @@ class EventObservation(Base):
 
         self.capture_time = datetime.fromisoformat(input.get('capture_time'))
         self.scene_name = input.get('scene_name')
+
+        self.motions = []
+        for m in input.get('motions'):
+            self.motions.append(MotionEvent(m))
 
 
 class EventClassification(Base):

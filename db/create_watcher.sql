@@ -43,3 +43,19 @@ ALTER TABLE event_classifications MODIFY COLUMN label varchar(20) NOT NULL;
 ALTER TABLE event_observations ADD COLUMN IF NOT EXISTS video_location varchar(100);
 
 ALTER TABLE event_classifications ADD COLUMN IF NOT EXISTS is_deprecated BOOLEAN;
+
+CREATE TABLE IF NOT EXISTS motion_events (
+	id SERIAL,
+	observation_id BIGINT UNSIGNED NOT NULL,
+	frame BIGINT,
+	x INT,
+	y INT,
+	width INT,
+	height INT,
+	pixels INT,
+	noise DOUBLE,
+	PRIMARY KEY(id),
+	FOREIGN KEY(observation_id)
+		REFERENCES event_observations(id)
+		ON DELETE CASCADE
+);
