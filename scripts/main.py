@@ -15,6 +15,7 @@ from connect_utils import TunneledConnection
 from flask import *
 
 from flask_httpauth import HTTPBasicAuth
+from werkzeug.exceptions import InternalServerError
 
 from watcher import record_kerberos_event
 
@@ -29,6 +30,13 @@ is_cli = None
 def log_request_info():
     #app.logger.debug('Headers: %s', request.headers)
     app.logger.debug('Body: %s', request.get_data())
+
+@app.errorhandler(InternalServerError)
+def log_error(e):
+	app.logger.error('request URL: %s', request.url)
+	app.logger.error('request body: %s', request.get_data())
+
+	return 'server error', 500
 
 def api_response_for_context(obj):
     if is_cli:
