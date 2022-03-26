@@ -59,3 +59,13 @@ CREATE TABLE IF NOT EXISTS motion_events (
 		REFERENCES event_observations(id)
 		ON DELETE CASCADE
 );
+
+ALTER TABLE event_observations
+	ADD COLUMN IF NOT EXISTS event_name varchar(20),
+	ADD COLUMN IF NOT EXISTS threshold int,
+	ADD COLUMN IF NOT EXISTS noise_level int,
+	ADD UNIQUE INDEX IF NOT EXISTS idx_event_name (event_name);
+	
+ALTER TABLE motion_events
+	ADD COLUMN IF NOT EXISTS label_count int,
+	DROP COLUMN IF EXISTS noise;

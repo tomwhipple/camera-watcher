@@ -14,3 +14,10 @@ update event_classifications set label = 'bicycle' where label = 'bicycle ';
 update event_classifications set label = 'tree-branches' where label = 'tree branches';
 update event_classifications set label = 'lights-decorative' where label = 'lights, decorative';
 update event_classifications set label = 'lighting-scene' where label = 'lighting, scene' ;
+
+delete from motion_events where id in (
+select id from (
+select
+id,
+width*height as area
+from motion_events ) as t where t.area = 0);
