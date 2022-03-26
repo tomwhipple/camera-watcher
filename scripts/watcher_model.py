@@ -32,10 +32,12 @@ class MotionEvent(Base):
     pixels = Column(Integer)
     label_count = Column(Integer)
 
+    event_name = Column(String)
+
     observation = relationship("EventObservation", back_populates='motions')
 
     def __init__(self, dict):
-        self.event_name = dict.get('event')
+        self.event_name = dict.get('event_name')
 
         self.frame = dict.get('frame')
         self.x = dict.get('x')
@@ -45,7 +47,7 @@ class MotionEvent(Base):
         self.pixels = dict.get('pixels')
         self.label_count = dict.get('label_count')
 
-        import pdb; pdb.set_trace()
+        self.observation = dict['observation']
 
 class EventObservation(Base):
     __tablename__ = 'event_observations'

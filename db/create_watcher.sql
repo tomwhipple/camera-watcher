@@ -68,4 +68,6 @@ ALTER TABLE event_observations
 	
 ALTER TABLE motion_events
 	ADD COLUMN IF NOT EXISTS label_count int,
-	DROP COLUMN IF EXISTS noise;
+	DROP COLUMN IF EXISTS noise,
+	ADD COLUMN IF NOT EXISTS event_name varchar(20);
+	

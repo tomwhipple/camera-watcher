@@ -15,7 +15,7 @@ from connect_utils import TunneledConnection
 from flask import *
 
 from flask_httpauth import HTTPBasicAuth
-from werkzeug.exceptions import InternalServerError
+from werkzeug.exceptions import InternalServerError, BadRequest
 
 from watcher import record_kerberos_event
 
@@ -32,6 +32,7 @@ def log_request_info():
     app.logger.debug('Body: %s', request.get_data())
 
 @app.errorhandler(InternalServerError)
+@app.errorhandler(BadRequest)
 def log_error(e):
 	app.logger.error('request URL: %s', request.url)
 	app.logger.error('request body: %s', request.get_data())
@@ -50,10 +51,13 @@ def hello():
 
 @app.route("/dbtest")
 def test_database():
+	num_observations = None
 	with TunneledConnection() as tc:
 		session = sqlalchemy.orm.Session(tc)
 
-		session.query.from_statement.text(query_dbtest_sqly)
+		num_observations = session.query(EventObservation).count()
+
+	return {'number_of_observations': num_observations}
 
 
 @app.route("/uncategorized")
@@ -121,10 +125,10 @@ def create_motion_event():
 
 	with TunneledConnection() as tc:
 		session = sqlalchemy.orm.Session(tc)
-		# stmt = select(EventObservation).where(EventObservation.event_name == input_dict['event_name'])
-		# observation = session.scalars(stmt).one()
+		stmt = select(EventObservation).where(EventObservation.event_name == input_dict['event_name'])
+		observation = session.scalars(stmt).one()
 
-		# input_dict['observation'] = observation
+		input_dict['observation'] = observation
 
 		session.add(MotionEvent(input_dict))
 		session.commit()
@@ -164,4 +168,4 @@ def verify_password(username, key):
 
 if __name__ == "__main__":
     is_cli = True
-    print(hello())
+    print(test_database())
