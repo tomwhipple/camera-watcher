@@ -30,19 +30,22 @@ class MotionEvent(Base):
     width = Column(Integer)
     height = Column(Integer)
     pixels = Column(Integer)
-    noise = Column(Float)
+    label_count = Column(Integer)
 
     observation = relationship("EventObservation", back_populates='motions')
 
     def __init__(self, dict):
+        self.event_name = dict.get('event')
+
         self.frame = dict.get('frame')
         self.x = dict.get('x')
         self.y = dict.get('y')
         self.width = dict.get('width')
         self.height = dict.get('height')
         self.pixels = dict.get('pixels')
-        self.noise = dict.get('noise') 
+        self.label_count = dict.get('label_count')
 
+        import pdb; pdb.set_trace()
 
 class EventObservation(Base):
     __tablename__ = 'event_observations'
@@ -55,8 +58,28 @@ class EventObservation(Base):
     storage_gcloud = Column(Boolean)
     video_location = Column(String)
 
+    event_name = Column(String)
+    threshold = Column(Integer)
+    noise_level = Column(Integer)
+
     classifications = relationship("EventClassification", back_populates='observation')
     motions = relationship("MotionEvent", back_populates='observation')
+
+    def __init__(self, input):
+        self.video_file = input.get('video_file')
+        video_fullpath = input.get('video_fullpath')
+        if video_fullpath:
+            p = Path(video_fullpath)
+            self.video_file = str(p.name)
+            self.video_location = str(p.parent)
+        self.storage_local = True
+
+        self.capture_time = datetime.fromisoformat(input.get('capture_time'))
+        self.scene_name = input.get('scene_name')
+
+        self.event_name = input.get('event_name')
+        self.threshold = input.get('threshold')
+        self.noise_level = input.get('noise_level')
 
     def api_response_dict(self):
         url = BASE_URL 
@@ -74,22 +97,6 @@ class EventObservation(Base):
             'video_url': url,
             'labels': list(map(lambda : c.label, self.classifications))
         }
-
-    def __init__(self, input):
-        self.video_file = input.get('video_file')
-        video_fullpath = input.get('video_fullpath')
-        if video_fullpath:
-            p = Path(video_fullpath)
-            self.video_file = str(p.name)
-            self.video_location = str(p.parent)
-        self.storage_local = True
-
-        self.capture_time = datetime.fromisoformat(input.get('capture_time'))
-        self.scene_name = input.get('scene_name')
-
-        self.motions = []
-        for m in input.get('motions'):
-            self.motions.append(MotionEvent(m))
 
 
 class EventClassification(Base):

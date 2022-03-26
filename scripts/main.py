@@ -19,6 +19,7 @@ from flask_httpauth import HTTPBasicAuth
 from watcher import record_kerberos_event
 
 query_uncategorized_sql = "select * from event_observations obs where obs.storage_local is True and obs.id not in (select distinct observation_id from event_classifications) order by rand() limit 20"
+query_dbtest_sql = "select count(*) from event_observations"
 
 app = Flask("watcher")
 auth = HTTPBasicAuth()
@@ -38,6 +39,14 @@ def api_response_for_context(obj):
 @app.route("/")
 def hello():
     return "Hello. We're watching you.\n"
+
+@app.route("/dbtest")
+def test_database():
+	with TunneledConnection() as tc:
+		session = sqlalchemy.orm.Session(tc)
+
+		session.query.from_statement.text(query_dbtest_sqly)
+
 
 @app.route("/uncategorized")
 @auth.login_required
@@ -95,16 +104,34 @@ def load_kerberos():
 
 		session.commit()
 
-		return 202
+		return {}, 202
 
+
+@app.route("/motions", methods=['POST'])
+def create_motion_event():
+	input_dict = request.json
+
+	with TunneledConnection() as tc:
+		session = sqlalchemy.orm.Session(tc)
+		# stmt = select(EventObservation).where(EventObservation.event_name == input_dict['event_name'])
+		# observation = session.scalars(stmt).one()
+
+		# input_dict['observation'] = observation
+
+		session.add(MotionEvent(input_dict))
+		session.commit()
+
+	return {}, 202
 
 @app.route("/observations/", methods=['POST'])
 @app.route("/observations", methods=['POST'])
 @auth.login_required
 def create_event_observation():
-	if request.json.get('filetype') == 16:
-		return jsonify("debug movies not accepted"), 400
+	if int(request.json.get('filetype')) != 8:
+		import pdb; pdb.set_trace()
+		return jsonify({'error': "debug movies not accepted"}), 400
 
+	new_observation = None
 	with TunneledConnection() as tc:
 		session = sqlalchemy.orm.Session(tc)
 
@@ -113,7 +140,7 @@ def create_event_observation():
 		session.add(new_observation)
 		session.commit()
 
-		return jsonify(new_observation.api_response_dict()), 201
+	return jsonify(new_observation.api_response_dict()), 201
 
 @auth.verify_password
 def verify_password(username, key):
