@@ -148,7 +148,7 @@ def create_event_observation():
 		session.add(new_observation)
 		session.commit()
 
-	return jsonify(new_observation.api_response_dict()), 201
+		return jsonify(new_observation.api_response_dict()), 201
 
 @auth.verify_password
 def verify_password(username, key):
