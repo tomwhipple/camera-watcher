@@ -49,6 +49,19 @@ class MotionEvent(Base):
 
         self.observation = dict['observation']
 
+    def api_response_dict(self):
+        return {
+            'motion_event_id': self.id,
+            'event_name': self.event_name,
+            'frame': self.frame,
+            'x': self.x,
+            'y': self.y,
+            'width:': self.width,
+            'height': self.height,
+            'pixels': self.pixels,
+            'label_count': self.label_count
+        }
+
 class EventObservation(Base):
     __tablename__ = 'event_observations'
     id = Column(BigInteger, primary_key=True)

@@ -130,10 +130,12 @@ def create_motion_event():
 
 		input_dict['observation'] = observation
 
-		session.add(MotionEvent(input_dict))
+		new_motion = MotionEvent(input_dict)
+
+		session.add(new_motion)
 		session.commit()
 
-	return {}, 202
+		return jsonify(new_motion.api_response_dict()), 201
 
 @app.route("/observations/", methods=['POST'])
 @app.route("/observations", methods=['POST'])
