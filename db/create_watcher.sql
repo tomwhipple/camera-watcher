@@ -71,3 +71,9 @@ ALTER TABLE motion_events
 	DROP COLUMN IF EXISTS noise,
 	ADD COLUMN IF NOT EXISTS event_name varchar(20);
 	
+ALTER TABLE motion_events DROP CONSTRAINT IF EXISTS motion_events_ibfk_1;
+
+ALTER TABLE motion_events DROP COLUMN IF EXISTS observation_id;
+
+ALTER TABLE motion_events
+	ADD INDEX IF NOT EXISTS idx_event_name_on_motion_events (event_name);

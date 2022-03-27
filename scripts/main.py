@@ -125,10 +125,6 @@ def create_motion_event():
 
 	with TunneledConnection() as tc:
 		session = sqlalchemy.orm.Session(tc)
-		stmt = select(EventObservation).where(EventObservation.event_name == input_dict['event_name'])
-		observation = session.scalars(stmt).one()
-
-		input_dict['observation'] = observation
 
 		new_motion = MotionEvent(input_dict)
 

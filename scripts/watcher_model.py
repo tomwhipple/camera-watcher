@@ -22,7 +22,6 @@ Base = declarative_base()
 class MotionEvent(Base):
     __tablename__ = 'motion_events'
     id = Column(BigInteger, primary_key=True)
-    observation_id = Column(BigInteger, ForeignKey('event_observations.id'))
 
     frame = Column(BigInteger)
     x = Column(Integer)
@@ -34,7 +33,7 @@ class MotionEvent(Base):
 
     event_name = Column(String)
 
-    observation = relationship("EventObservation", back_populates='motions')
+    #observation = relationship("EventObservation", back_populates='motions')
 
     def __init__(self, dict):
         self.event_name = dict.get('event_name')
@@ -47,7 +46,7 @@ class MotionEvent(Base):
         self.pixels = dict.get('pixels')
         self.label_count = dict.get('label_count')
 
-        self.observation = dict['observation']
+        self.observation = dict.get('observation')
 
     def api_response_dict(self):
         return {
@@ -78,7 +77,7 @@ class EventObservation(Base):
     noise_level = Column(Integer)
 
     classifications = relationship("EventClassification", back_populates='observation')
-    motions = relationship("MotionEvent", back_populates='observation')
+    #motions = relationship("MotionEvent", back_populates='observation')
 
     def __init__(self, input):
         self.video_file = input.get('video_file')
@@ -112,7 +111,6 @@ class EventObservation(Base):
             'video_url': url,
             'labels': list(map(lambda : c.label, self.classifications))
         }
-
 
 class EventClassification(Base):
     __tablename__ = 'event_classifications'
