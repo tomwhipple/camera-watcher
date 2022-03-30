@@ -99,7 +99,7 @@ class EventObservation(Base):
             self.video_location = str(p.parent)
         self.storage_local = True
 
-        self.capture_time = datetime.fromisoformat(input.get('capture_time'))
+        self.capture_time = datetime.datetime.fromisoformat(input.get('capture_time'))
         self.scene_name = input.get('scene_name')
 
         self.event_name = input.get('event_name')
