@@ -18,6 +18,7 @@ from passlib.hash import pbkdf2_sha256
 from pathlib import Path
 from astral import LocationInfo
 from astral.sun import sun
+import pytz
 
 config = configparser.ConfigParser()
 file = os.path.join(sys.path[0],'application.cfg')
@@ -91,6 +92,12 @@ class EventObservation(Base):
     #motions = relationship("MotionEvent", back_populates='observation')
 
     def __init__(self, input):
+        # we want to be sure we're not caching timezone offsets inadvertently
+        camera_timezone = datetime.datetime.now().astimezone().tzinfo
+        if config['location'].get('TIMEZONE'):
+            camera_timezone = pytz.timezone(config['location'].get('TIMEZONE')) 
+        camera_location = LocationInfo()
+
         self.video_file = input.get('video_file')
         video_fullpath = input.get('video_fullpath')
         if video_fullpath:
@@ -99,7 +106,7 @@ class EventObservation(Base):
             self.video_location = str(p.parent)
         self.storage_local = True
 
-        self.capture_time = datetime.datetime.fromisoformat(input.get('capture_time'))
+        self.capture_time = datetime.datetime.fromisoformat(input.get('capture_time')).astimezone(camera_timezone)
         self.scene_name = input.get('scene_name')
 
         self.event_name = input.get('event_name')
@@ -108,9 +115,8 @@ class EventObservation(Base):
 
         lat=config['location'].get('LATITUDE')
         lng=config['location'].get('LONGITUDE') 
-        timezone=config['location'].get('TIMEZONE')
 
-        camera_location = LocationInfo(self.scene_name, None, timezone, lat, lng)
+        camera_location = LocationInfo(self.scene_name, None, camera_timezone, lat, lng)
         self.lighting_type = sunlight_from_time_for_location(self.capture_time, camera_location)
 
     def api_response_dict(self):
@@ -132,8 +138,7 @@ class EventObservation(Base):
 
 def sunlight_from_time_for_location(timestamp, location):
     lighting_type = 'midnight'
-    time_occurs = prev_occurs = datetime.datetime(1970,1,1, tzinfo=datetime.timezone.utc)
-    # prev_occurs.tzinfo = datetime.timedelta(days=-1, seconds=68400)
+    time_occurs = prev_occurs = datetime.datetime(1970,1,1).astimezone()
 
     for this_lighting_type, this_time_occurs in sun(location.observer, date=timestamp).items():
         if timestamp > prev_occurs and timestamp >= this_time_occurs:
