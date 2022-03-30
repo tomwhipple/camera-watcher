@@ -19,7 +19,7 @@ from werkzeug.exceptions import InternalServerError, BadRequest
 
 from watcher import record_kerberos_event
 
-query_uncategorized_sql = "select * from event_observations obs where obs.storage_local is True and obs.id not in (select distinct observation_id from event_classifications) order by rand() limit 20"
+query_uncategorized_sql = "select * from event_observations obs where obs.storage_local is True and obs.lighting_type = 'daylight' and obs.id not in (select distinct observation_id from event_classifications) order by rand() limit 20"
 query_dbtest_sql = "select count(*) from event_observations"
 
 app = Flask("watcher")
