@@ -5,6 +5,7 @@ import json
 import argparse
 import pathlib
 import os
+import configparser
 
 from datetime import datetime
 from pathlib import PurePath
@@ -13,12 +14,19 @@ import sqlalchemy
 from sqlalchemy import select
 
 import watcher_model
-from watcher_model import EventObservation
-from watcher_model import APIUser
+from watcher_model import EventObservation, APIUser, sunlight_from_time_for_location
 from connect_utils import TunneledConnection
 
-# DEFAULT_WORKING_DIR = PurePath('/etc/opt/kerberosio/capture/')
+import pytz
+from astral import LocationInfo
+
+config = configparser.ConfigParser()
+file = os.path.join(sys.path[0],'application.cfg')
+config.read(file)
+
 DEFAULT_WORKING_DIR = PurePath('//Volumes/Video Captures/wellerDriveway/capture')
+
+
 
 def upload_event_in_file(session, filename):
     with open(filename) as fp:
@@ -97,11 +105,36 @@ def set_user_key(session, username):
     print(f"key for {username} is now {newkey}")
     return newkey
 
+def update_solar_lighting_type(session):
+    camera_timezone = datetime.now().astimezone().tzinfo
+    if config['location'].get('TIMEZONE'):
+        camera_timezone = pytz.timezone(config['location'].get('TIMEZONE')) 
+
+    lat=config['location'].get('LATITUDE')
+    lng=config['location'].get('LONGITUDE') 
+
+    camera_location = LocationInfo(None, None, camera_timezone, lat, lng)
+
+    stmt = select(EventObservation).where(EventObservation.lighting_type == None)
+    result = session.execute(stmt)
+
+    count = 0
+    for obs in result.scalars():
+        time_with_zone = obs.capture_time.astimezone(camera_location.timezone)
+        obs.lighting_type = sunlight_from_time_for_location(time_with_zone,camera_location)
+
+        count += 1
+        if count % 25 == 0:
+            session.commit()
+
+            print(f"updated {count}")
+
+    print(f"updated {count} records")
 
 
 def main():
     parser = argparse.ArgumentParser(description='Upload events to database')
-    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user'])
+    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user', 'update_lighting'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
     parser.add_argument('-l', '--limit', type=int)
@@ -125,6 +158,8 @@ def main():
             upload_events_in_directory(session, str(args.input_directory), args.limit)
         elif args.action == 'record_kerberos':
             record_kerberos_event(session, args.raw_json, args.input_directory)
+        elif args.action == 'update_lighting':
+            update_solar_lighting_type(session)
         else:
             print("No action specified.")
 

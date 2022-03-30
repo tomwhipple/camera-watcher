@@ -1,6 +1,6 @@
 
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from astral import LocationInfo
 from watcher_model import sunlight_from_time_for_location
 
@@ -28,3 +28,13 @@ def test_sunlight():
 	midnight = datetime.fromisoformat('2022-03-30 00:00-05:00')
 	assert sunlight_from_time_for_location(midnight, austin) == 'night'
 
+def test_timezones():
+	austin = LocationInfo('austin', 'texas', 'US/Central', 30.443, -97.817)
+
+	end_of_march = datetime.fromisoformat('2022-03-30 10:00')
+	assert end_of_march.astimezone(austin.tzinfo).utcoffset() == timedelta(hours= -5)
+
+	mid_january = datetime.fromisoformat('2022-01-15 13:42')
+	assert mid_january.astimezone(austin.tzinfo).utcoffset() == timedelta(hours= -6)
+
+	assert end_of_march.astimezone(austin.tzinfo).astimezone(timezone.utc).isoformat() == '2022-03-30T15:00:00+00:00'
