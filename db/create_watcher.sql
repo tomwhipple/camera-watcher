@@ -77,3 +77,5 @@ ALTER TABLE motion_events DROP COLUMN IF EXISTS observation_id;
 
 ALTER TABLE motion_events
 	ADD INDEX IF NOT EXISTS idx_event_name_on_motion_events (event_name);
+
+ALTER TABLE event_observations ADD COLUMN IF NOT EXISTS lighting_type varchar(10);

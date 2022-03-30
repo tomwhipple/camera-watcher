@@ -1,7 +1,11 @@
+import sys
+import os
 import enum
 import json
 import random
 import string
+import configparser
+import datetime
 
 import sqlalchemy
 
@@ -12,10 +16,15 @@ from sqlalchemy.orm import relationship
 from passlib.hash import pbkdf2_sha256
 
 from pathlib import Path
-from datetime import datetime
+from astral import LocationInfo
+from astral.sun import sun
 
-BASE_URL="https://home.tomwhipple.com/"
-BASE_DIR="/data/video/"
+config = configparser.ConfigParser()
+file = os.path.join(sys.path[0],'application.cfg')
+config.read(file)
+
+BASE_URL=config['system'].get('BASE_URL')
+BASE_DIR=config['system'].get('BASE_DIR')
 
 Base = declarative_base()
 
@@ -58,8 +67,8 @@ class MotionEvent(Base):
             'width:': self.width,
             'height': self.height,
             'pixels': self.pixels,
-            'label_count': self.label_count
-        }
+            'label_count': self.label_count }
+
 
 class EventObservation(Base):
     __tablename__ = 'event_observations'
@@ -75,6 +84,8 @@ class EventObservation(Base):
     event_name = Column(String)
     threshold = Column(Integer)
     noise_level = Column(Integer)
+
+    lighting_type = Column(String)
 
     classifications = relationship("EventClassification", back_populates='observation')
     #motions = relationship("MotionEvent", back_populates='observation')
@@ -95,6 +106,13 @@ class EventObservation(Base):
         self.threshold = input.get('threshold')
         self.noise_level = input.get('noise_level')
 
+        lat=config['location'].get('LATITUDE')
+        lng=config['location'].get('LONGITUDE') 
+        timezone=config['location'].get('TIMEZONE')
+
+        camera_location = LocationInfo(self.scene_name, None, timezone, lat, lng)
+        self.lighting_type = sunlight_from_time_for_location(self.capture_time, camera_location)
+
     def api_response_dict(self):
         url = BASE_URL 
 
@@ -111,6 +129,25 @@ class EventObservation(Base):
             'video_url': url,
             'labels': list(map(lambda : c.label, self.classifications))
         }
+
+def sunlight_from_time_for_location(timestamp, location):
+    lighting_type = 'midnight'
+    time_occurs = prev_occurs = datetime.datetime(1970,1,1, tzinfo=datetime.timezone.utc)
+    # prev_occurs.tzinfo = datetime.timedelta(days=-1, seconds=68400)
+
+    for this_lighting_type, this_time_occurs in sun(location.observer, date=timestamp).items():
+        if timestamp > prev_occurs and timestamp >= this_time_occurs:
+            prev_occurs = this_time_occurs
+            lighting_type = this_lighting_type
+
+    if lighting_type in ['noon', 'sunrise']:
+        lighting_type = 'daylight'
+    elif lighting_type in ['dawn', 'sunset']:
+        lighting_type = 'twighlight'
+    elif lighting_type in ['dusk', 'midnight']:
+        lighting_type = 'night'    
+
+    return lighting_type   
 
 class EventClassification(Base):
     __tablename__ = 'event_classifications'
