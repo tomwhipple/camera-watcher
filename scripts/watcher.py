@@ -8,7 +8,7 @@ import os
 import configparser
 
 from datetime import datetime
-from pathlib import PurePath
+from pathlib import PurePath, Path
 
 import sqlalchemy
 from sqlalchemy import select
@@ -25,8 +25,6 @@ file = os.path.join(sys.path[0],'application.cfg')
 config.read(file)
 
 DEFAULT_WORKING_DIR = PurePath('//Volumes/Video Captures/wellerDriveway/capture')
-
-
 
 def upload_event_in_file(session, filename):
     with open(filename) as fp:
@@ -124,17 +122,39 @@ def update_solar_lighting_type(session):
         obs.lighting_type = sunlight_from_time_for_location(time_with_zone,camera_location)
 
         count += 1
-        if count % 25 == 0:
+        if count % 100 == 0:
             session.commit()
 
             print(f"updated {count}")
 
     print(f"updated {count} records")
 
+def update_video_directory(session):
+    basedir = Path(config['system']['BASE_DIR'])
+
+    stmt = select(EventObservation).where(EventObservation.video_location == None)
+    result = session.execute(stmt)
+
+    count = 0
+    for obs in result.scalars():
+        location = basedir / obs.scene_name / 'capture'
+        videopath = location / obs.video_file
+        if videopath.is_file():
+            obs.video_location = location
+            obs.storage_local = True
+
+            count += 1
+            if count % 100:
+                session.commit()
+                print(f"updated {count}")
+        else:
+            obs.storage_local = False
+
+    print(f"upated {count} total file locations")
 
 def main():
     parser = argparse.ArgumentParser(description='Upload events to database')
-    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user', 'update_lighting'])
+    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user', 'update_lighting', 'update_dirs'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
     parser.add_argument('-l', '--limit', type=int)
@@ -160,6 +180,8 @@ def main():
             record_kerberos_event(session, args.raw_json, args.input_directory)
         elif args.action == 'update_lighting':
             update_solar_lighting_type(session)
+        elif args.action == 'update_dirs':
+            update_video_directory(session)
         else:
             print("No action specified.")
 
