@@ -99,6 +99,7 @@ def classify():
 		return jsonify(newClassification.api_response_dict()), 201
 
 @app.route("/motions", methods=['POST'])
+@auth.login_required
 def create_motion_event():
 	input_dict = request.json
 
