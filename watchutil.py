@@ -151,7 +151,7 @@ def update_video_directory(session):
     print(f"upated {count} total file locations")
 
 def main():
-    parser = argparse.ArgumentParser(description='Upload events to database')
+    parser = argparse.ArgumentParser(description='Utilites for watcher')
     parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user', 'update_lighting', 'update_dirs'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
