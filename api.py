@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import json
+import argparse
 
 import sqlalchemy
 from sqlalchemy import text, select
@@ -26,10 +27,10 @@ def log_request_info():
 @app.errorhandler(InternalServerError)
 @app.errorhandler(BadRequest)
 def log_error(e):
-	app.logger.error('request URL: %s', request.url)
-	app.logger.error('request body: %s', request.get_data())
+    app.logger.error('request URL: %s', request.url)
+    app.logger.error('request body: %s', request.get_data())
 
-	return 'server error', 500
+    return 'server error', 500
 
 def api_response_for_context(obj):
     if is_cli:
@@ -43,13 +44,13 @@ def hello():
 
 @app.route("/dbtest")
 def test_database():
-	num_observations = None
-	with TunneledConnection() as tc:
-		session = sqlalchemy.orm.Session(tc)
+    num_observations = None
+    with TunneledConnection() as tc:
+        session = sqlalchemy.orm.Session(tc)
 
-		num_observations = session.query(EventObservation).count()
+        num_observations = session.query(EventObservation).count()
 
-	return {'number_of_observations': num_observations}
+    return {'number_of_observations': num_observations}
 
 
 @app.route("/uncategorized")
@@ -70,80 +71,97 @@ def get_uncategorized(request=None, context=None):
 @app.route("/labels")
 @auth.login_required
 def get_labels():
-	with TunneledConnection() as tc:
-		session = sqlalchemy.orm.Session(tc)
+    with TunneledConnection() as tc:
+        session = sqlalchemy.orm.Session(tc)
 
-		stmt = select(EventClassification.label).distinct().where(EventClassification.is_deprecated == None)
-		labels = []
-		for l in session.execute(stmt).fetchall():
-			labels.append(l[0])
+        stmt = select(EventClassification.label).distinct().where(EventClassification.is_deprecated == None)
+        labels = []
+        for l in session.execute(stmt).fetchall():
+            labels.append(l[0])
 
-		return jsonify(labels)
+        return json.dumps(labels)
 
 @app.route("/classify", methods=['POST'])
 @auth.login_required
 def classify():
-	with TunneledConnection() as tc:
-		session = sqlalchemy.orm.Session(tc)
+    with TunneledConnection() as tc:
+        session = sqlalchemy.orm.Session(tc)
 
-		for lbl in request.json.get('labels', []):
-			newClassification = EventClassification(
-				observation_id = request.json.get('event_observation_id'),
-				label = lbl,
-				decider = g.user.username
-			)
-			session.add(newClassification)
+        for lbl in request.json.get('labels', []):
+            newClassification = EventClassification(
+                observation_id = request.json.get('event_observation_id'),
+                label = lbl,
+                decider = g.user.username
+            )
+            session.add(newClassification)
 
-		session.commit()
+        session.commit()
 
-		return jsonify(newClassification.api_response_dict()), 201
+        return jsonify(newClassification.api_response_dict()), 201
 
 @app.route("/motions", methods=['POST'])
 @auth.login_required
 def create_motion_event():
-	input_dict = request.json
+    input_dict = request.json
 
-	with TunneledConnection() as tc:
-		session = sqlalchemy.orm.Session(tc)
+    with TunneledConnection() as tc:
+        session = sqlalchemy.orm.Session(tc)
 
-		new_motion = MotionEvent(input_dict)
+        new_motion = MotionEvent(input_dict)
 
-		session.add(new_motion)
-		session.commit()
+        session.add(new_motion)
+        session.commit()
 
-		return jsonify(new_motion.api_response_dict()), 201
+        return jsonify(new_motion.api_response_dict()), 201
 
 @app.route("/observations/", methods=['POST'])
 @app.route("/observations", methods=['POST'])
 @auth.login_required
 def create_event_observation():
-	if int(request.json.get('filetype')) != 8:
-		import pdb; pdb.set_trace()
-		return jsonify({'error': "debug movies not accepted"}), 400
+    if int(request.json.get('filetype')) != 8:
+        return jsonify({'error': "debug movies not accepted"}), 400
 
-	new_observation = None
-	with TunneledConnection() as tc:
-		session = sqlalchemy.orm.Session(tc)
+    new_observation = None
+    with TunneledConnection() as tc:
+        session = sqlalchemy.orm.Session(tc)
 
-		new_observation = EventObservation(request.json)
+        new_observation = EventObservation(request.json)
 
-		session.add(new_observation)
-		session.commit()
+        session.add(new_observation)
+        session.commit()
 
-		return jsonify(new_observation.api_response_dict()), 201
+        return jsonify(new_observation.api_response_dict()), 201
 
 @auth.verify_password
 def verify_password(username, key):
+    if is_cli:
+        return True
 
-	with TunneledConnection() as tc:
-		session = sqlalchemy.orm.Session(tc)
+    with TunneledConnection() as tc:
+        session = sqlalchemy.orm.Session(tc)
 
-		user = session.query(APIUser).filter_by(username = username).first()
-		if not user or not user.verify_key(key):
-			return False
-		g.user = user
-		return True
+        user = session.query(APIUser).filter_by(username = username).first()
+        if not user or not user.verify_key(key):
+            return False
+        g.user = user
+        return True
 
 if __name__ == "__main__":
     is_cli = True
-    print(test_database())
+
+    parser = argparse.ArgumentParser(description='API via command line')
+    parser.add_argument('action', choices=['hello','test_database'])
+
+    args = parser.parse_args()
+
+    if args.action == 'hello':
+        print(hello())
+    elif args.action == 'test_database':
+        print(test_database())
+    elif args.action == 'get_labels':
+        print(get_labels())
+    elif args.action == 'get_uncategorized':
+        print(get_uncategorized())
+    else:
+        print("no action specified")
+
