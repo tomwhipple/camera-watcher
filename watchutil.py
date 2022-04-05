@@ -13,12 +13,10 @@ from pathlib import PurePath, Path
 import sqlalchemy
 from sqlalchemy import select
 
-import watcher_model
-from watcher_model import EventObservation, APIUser, sunlight_from_time_for_location
-from connect_utils import TunneledConnection
-
 import pytz
 from astral import LocationInfo
+
+from watcher import EventObservation, APIUser, TunneledConnection
 
 config = configparser.ConfigParser()
 file = os.path.join(sys.path[0],'application.cfg')
@@ -119,7 +117,7 @@ def update_solar_lighting_type(session):
     count = 0
     for obs in result.scalars():
         time_with_zone = obs.capture_time.astimezone(camera_location.timezone)
-        obs.lighting_type = sunlight_from_time_for_location(time_with_zone,camera_location)
+        obs.lighting_type = watcher.model.sunlight_from_time_for_location(time_with_zone,camera_location)
 
         count += 1
         if count % 100 == 0:

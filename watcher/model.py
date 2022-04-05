@@ -1,3 +1,4 @@
+
 import sys
 import os
 import enum
@@ -19,6 +20,8 @@ from pathlib import Path
 from astral import LocationInfo
 from astral.sun import sun
 import pytz
+
+__all__ = ['MotionEvent', 'EventObservation', 'EventClassification', 'APIUser']
 
 config = configparser.ConfigParser()
 file = os.path.join(sys.path[0],'application.cfg')

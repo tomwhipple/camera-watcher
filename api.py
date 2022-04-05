@@ -5,19 +5,11 @@ import json
 import sqlalchemy
 from sqlalchemy import text, select
 
-import watcher_model
-from watcher_model import *
-
-from sshtunnel import SSHTunnelForwarder
-
-import connect_utils
-from connect_utils import TunneledConnection
 from flask import *
-
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import InternalServerError, BadRequest
 
-from watcher import record_kerberos_event
+from watcher import *
 
 query_uncategorized_sql = "select * from event_observations obs where obs.storage_local is True and obs.lighting_type = 'daylight' and obs.id not in (select distinct observation_id from event_classifications) order by rand() limit 20"
 query_dbtest_sql = "select count(*) from event_observations"
@@ -105,19 +97,6 @@ def classify():
 		session.commit()
 
 		return jsonify(newClassification.api_response_dict()), 201
-
-@app.route("/load_kerberos/", methods=['POST'])
-@app.route("/load_kerberos", methods=['POST'])
-@auth.login_required
-def load_kerberos():
-	with TunneledConnection() as tc:
-		session = sqlalchemy.orm.Session(tc)
-		record_kerberos_event(session, request.json)
-
-		session.commit()
-
-		return {}, 202
-
 
 @app.route("/motions", methods=['POST'])
 def create_motion_event():

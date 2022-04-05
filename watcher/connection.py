@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from sshtunnel import SSHTunnelForwarder
 
+__all__ = ['TunneledConnection']
 
 def get_config(section_name, file='None'):
     parser = configparser.ConfigParser()
