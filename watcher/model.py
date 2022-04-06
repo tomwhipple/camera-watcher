@@ -46,7 +46,9 @@ class MotionEvent(Base):
 
     event_name = Column(String)
 
-    #observation = relationship("EventObservation", back_populates='motions')
+    # observation = relationship("EventObservation",)
+
+    ## Note: x & y are the _center_ of the box.
 
     def __init__(self, dict):
         self.event_name = dict.get('event_name')
@@ -73,6 +75,14 @@ class MotionEvent(Base):
             'pixels': self.pixels,
             'label_count': self.label_count }
 
+    def box(self):
+        return (
+            int(self.x - self.width/2),
+            int(self.y - self.height/2),
+            self.width,
+            self.height
+        )
+
 
 class EventObservation(Base):
     __tablename__ = 'event_observations'
@@ -93,6 +103,7 @@ class EventObservation(Base):
 
     classifications = relationship("EventClassification", back_populates='observation')
     #motions = relationship("MotionEvent", back_populates='observation')
+    # motions = relationship("MotionEvent", primaryjoin=lambda: EventObservation.event_name == MotionEvent.event_name)
 
     def __init__(self, input):
         # we want to be sure we're not caching timezone offsets inadvertently
@@ -138,6 +149,18 @@ class EventObservation(Base):
             'video_url': url,
             'labels': list(map(lambda : c.label, self.classifications))
         }
+
+    def file_path(self, alt_base_dir=None):
+        if self.video_location and self.storage_local:
+            fullpath = os.path.join(self.video_location,self.video_file)
+        elif self.storage_local:
+            fullpath = os.path.join(BASE_DIR,self.scene_name,'capture',self.video_file)
+
+        if alt_base_dir:
+            fullpath = os.path.join(alt_base_dir, fullpath.removeprefix(BASE_DIR))
+
+        return fullpath
+
 
 def sunlight_from_time_for_location(timestamp, location):
     lighting_type = 'midnight'

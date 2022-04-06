@@ -80,8 +80,12 @@ class TunneledConnection(object):
 
         self.tunnel = get_ssh_tunnel(self.config)
         self.engine = None
+        self.connection = None
 
     def __enter__(self):
+        return self.connect()
+
+    def connect(self):
         if self.tunnel:
             self.tunnel.start()
             self.config['db_host'] = self.tunnel.local_bind_address[0]

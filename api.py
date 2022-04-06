@@ -121,7 +121,6 @@ def create_event_observation():
     if int(request.json.get('filetype')) != 8:
         return jsonify({'error': "debug movies not accepted"}), 400
 
-    new_observation = None
     with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(tc)
 
