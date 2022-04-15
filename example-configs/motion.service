@@ -1,0 +1,18 @@
+# /etc/systemd/system/motion.service
+#
+# See also https://wiki.debian.org/systemd/Services
+
+[Unit]
+Description=Motion Service (to monitor cameras)
+After=Network.target
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/local/bin/motion
+
+User=motion
+Group=video
+
+[Install]
+WantedBy=multi-user.target
