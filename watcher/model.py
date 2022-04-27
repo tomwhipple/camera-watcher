@@ -113,17 +113,17 @@ class EventObservation(Base):
         camera_location = LocationInfo()
 
         self.video_file = input.get('video_file')
-        video_fullpath = input.get('video_fullpath')
+        video_fullpath = input.get('video_fullpath',"")
         if video_fullpath:
             p = Path(video_fullpath)
             self.video_file = str(p.name)
-            self.video_location = str(p.parent)
-        self.storage_local = p.is_file()
+            self.video_location = str(p.parent).removeprefix(BASE_DIR + '/')
+            self.storage_local = p.is_file()
 
-        self.capture_time = datetime.datetime.fromisoformat(input.get('capture_time')).astimezone(camera_timezone)
-        self.scene_name = input.get('scene_name')
+        self.capture_time = datetime.datetime.fromisoformat(input.get('capture_time',datetime.datetime.now().isoformat())).astimezone(camera_timezone)
+        self.scene_name = input.get('scene_name',"")
 
-        self.event_name = input.get('event_name')
+        self.event_name = input.get('event_name',"")
         self.threshold = input.get('threshold')
         self.noise_level = input.get('noise_level')
 

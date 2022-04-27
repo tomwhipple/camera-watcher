@@ -29,12 +29,21 @@ def log_request_info():
     app.logger.debug('Body: %s', request.get_data())
 
 @app.errorhandler(InternalServerError)
-@app.errorhandler(BadRequest)
-def log_error(e):
+def log_internal_error(e):
     app.logger.error('request URL: %s', request.url)
     app.logger.error('request body: %s', request.get_data())
+    app.logger.error(e)
 
-    return 'server error', 500
+    return "oops", 500
+
+
+@app.errorhandler(BadRequest)
+def log_bad_request(e):
+    app.logger.error('request URL: %s', request.url)
+    app.logger.error('request body: %s', request.get_data())
+    app.logger.error(e)
+
+    return e, 400
 
 def api_response_for_context(obj):
     if is_cli:
@@ -122,7 +131,7 @@ def create_motion_event():
 @app.route("/observations", methods=['POST'])
 @auth.login_required
 def create_event_observation():
-    if int(request.json.get('filetype')) != 8:
+    if int(request.json.get('filetype',-1)) != 8:
         return jsonify({'error': "debug movies not accepted"}), 400
 
     with TunneledConnection() as tc:
@@ -130,10 +139,29 @@ def create_event_observation():
 
         new_observation = EventObservation(request.json)
 
-        session.add(new_observation)
-        session.commit()
+        try:
+            session.add(new_observation)
+            session.commit()
+            response_code = 201
+            response_body = jsonify(new_observation.api_response_dict())
 
-        return jsonify(new_observation.api_response_dict()), 201
+        except sqlalchemy.exc.IntegrityError as ie:
+            session.rollback()
+
+            stmt = select(EventObservation).where(EventObservation.event_name == new_observation.event_name)
+            existing_observation = session.execute(stmt).scalar()
+
+            if (existing_observation.event_name == new_observation.event_name 
+                    and existing_observation.video_file == new_observation.video_file
+                    and existing_observation.scene_name == new_observation.scene_name ):
+                response_code = 200
+                response_body = jsonify(existing_observation.api_response_dict())
+            else:
+                response_code = 400
+                response_body = jsonify({"error": "Data Integrity check failed. Ensure you're not reusing file or event names"})
+
+        return response_body, response_code
+
 
 @auth.verify_password
 def verify_password(username, key):
