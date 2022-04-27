@@ -118,7 +118,7 @@ class EventObservation(Base):
             p = Path(video_fullpath)
             self.video_file = str(p.name)
             self.video_location = str(p.parent)
-        self.storage_local = True
+        self.storage_local = p.is_file()
 
         self.capture_time = datetime.datetime.fromisoformat(input.get('capture_time')).astimezone(camera_timezone)
         self.scene_name = input.get('scene_name')
