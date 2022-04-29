@@ -29,8 +29,10 @@ def log_before():
     app.logger.debug('Body: %s', request.get_data())
 
 @app.after_request
-def log_after():
+def log_after(response):
     app.logger.info(f"{response.status_code} - {request.url}")
+
+    return response
 
 @app.errorhandler(InternalServerError)
 def log_internal_error(e):
