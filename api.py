@@ -24,13 +24,16 @@ auth = HTTPBasicAuth()
 is_cli = None
 
 @app.before_request
-def log_request_info():
-    #app.logger.debug('Headers: %s', request.headers)
+def log_before():
+    app.logger.debug('Headers: %s', request.headers)
     app.logger.debug('Body: %s', request.get_data())
+
+@app.after_request
+def log_after():
+    app.logger.info(f"{response.status_code} - {request.url}")
 
 @app.errorhandler(InternalServerError)
 def log_internal_error(e):
-    app.logger.error('request URL: %s', request.url)
     app.logger.error('request body: %s', request.get_data())
     app.logger.error(e)
 
@@ -39,7 +42,6 @@ def log_internal_error(e):
 
 @app.errorhandler(BadRequest)
 def log_bad_request(e):
-    app.logger.error('request URL: %s', request.url)
     app.logger.error('request body: %s', request.get_data())
     app.logger.error(e)
 
