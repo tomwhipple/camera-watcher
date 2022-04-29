@@ -41,7 +41,6 @@ def log_internal_error(e):
 
     return "oops", 500
 
-
 @app.errorhandler(BadRequest)
 def log_bad_request(e):
     app.logger.error('request body: %s', request.get_data())
@@ -136,7 +135,9 @@ def create_motion_event():
 @auth.login_required
 def create_event_observation():
     if int(request.json.get('filetype',-1)) != 8:
-        return jsonify({'error': "debug movies not accepted"}), 400
+        msg = "debug movies not accepted"
+        app.logger.error(msg)
+        return jsonify({'error': msg}), 400
 
     with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(tc)
@@ -162,7 +163,9 @@ def create_event_observation():
                 response_body = jsonify(existing_observation.api_response_dict())
             else:
                 response_code = 400
-                response_body = jsonify({"error": "Data Integrity check failed. Ensure you're not reusing file or event names"})
+                msg = "Data Integrity check failed. Ensure you're not reusing file or event names"
+                app.logger.error(msg)
+                response_body = jsonify({"error": msg})
 
         return response_body, response_code
 
