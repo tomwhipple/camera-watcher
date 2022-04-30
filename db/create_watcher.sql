@@ -82,3 +82,15 @@ ALTER TABLE event_observations ADD COLUMN IF NOT EXISTS lighting_type varchar(10
 
 ALTER TABLE event_observations MODIFY COLUMN event_name VARCHAR(100);
 ALTER TABLE motion_events MODIFY COLUMN event_name VARCHAR(100);
+
+CREATE TABLE IF NOT EXISTS uploads (
+	sync_at TIMESTAMP,
+	event_id BIGINT UNSIGNED NOT NULL,
+	event_type VARCHAR(20),
+	result_code INT
+);
+
+ALTER TABLE uploads ADD INDEX upload_idx (event_id, event_type);
+ALTER TABLE uploads
+	ADD COLUMN IF NOT EXISTS id SERIAL,
+	ADD PRIMARY KEY(id);

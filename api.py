@@ -134,8 +134,9 @@ def create_motion_event():
 @app.route("/observations", methods=['POST'])
 @auth.login_required
 def create_event_observation():
-    if int(request.json.get('filetype',-1)) != 8:
-        msg = "debug movies not accepted"
+    filetype = request.json.get('filetype')
+    if filetype and int(filetype) != 8:
+        msg = "video files must be mp4 and not debug"
         app.logger.error(msg)
         return jsonify({'error': msg}), 400
 

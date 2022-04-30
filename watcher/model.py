@@ -21,7 +21,7 @@ from astral import LocationInfo
 from astral.sun import sun
 import pytz
 
-__all__ = ['MotionEvent', 'EventObservation', 'EventClassification', 'APIUser']
+__all__ = ['MotionEvent', 'EventObservation', 'EventClassification', 'APIUser', 'Upload']
 
 config = configparser.ConfigParser()
 file = os.path.join(sys.path[0],'application.cfg')
@@ -31,6 +31,21 @@ BASE_URL=config['system'].get('BASE_URL')
 BASE_DIR=config['system'].get('BASE_DIR')
 
 Base = declarative_base()
+
+class Upload(Base):
+    __tablename__ = 'uploads'
+    id = Column(BigInteger, primary_key=True)
+    sync_at = Column(DateTime)
+    event_id = Column(BigInteger)
+    event_type = Column(String)
+    result_code = Column(Integer)
+
+    def __init__(self, input):
+        event = input.get('event')
+        self.sync_at = input.get('sync_at', datetime.datetime.now())
+        self.event_id = event.id
+        self.event_type = type(event).__name__
+        self.result_code = input.get('result_code')
 
 class MotionEvent(Base):
     __tablename__ = 'motion_events'
@@ -112,15 +127,20 @@ class EventObservation(Base):
             camera_timezone = pytz.timezone(config['location'].get('TIMEZONE')) 
         camera_location = LocationInfo()
 
-        self.video_file = input.get('video_file')
-        video_fullpath = input.get('video_fullpath',"")
+        video_fullpath = input.get('video_fullpath')
         if video_fullpath:
             p = Path(video_fullpath)
             self.video_file = str(p.name)
             self.video_location = str(p.parent).removeprefix(BASE_DIR + '/')
             self.storage_local = p.is_file()
+        else:
+            self.video_file = input.get('video_file')
+            self.video_location = input.get('video_location')
+            p = Path(BASE_DIR) / self.video_location / self.video_file
+            self.storage_local = p.is_file()
 
-        self.capture_time = datetime.datetime.fromisoformat(input.get('capture_time',datetime.datetime.now().isoformat())).astimezone(camera_timezone)
+        now = datetime.datetime.fromisoformat(input.get('capture_time',datetime.datetime.now().isoformat())).astimezone(camera_timezone)
+        self.capture_time = input.get('capture_time', now)
         self.scene_name = input.get('scene_name',"")
 
         self.event_name = input.get('event_name',"")
@@ -131,7 +151,7 @@ class EventObservation(Base):
         lng=config['location'].get('LONGITUDE') 
 
         camera_location = LocationInfo(self.scene_name, None, camera_timezone, lat, lng)
-        self.lighting_type = sunlight_from_time_for_location(self.capture_time, camera_location)
+        self.lighting_type = input.get('lighting_type',sunlight_from_time_for_location(self.capture_time, camera_location))
 
     def api_response_dict(self):
         url = BASE_URL 
@@ -148,6 +168,19 @@ class EventObservation(Base):
             'scene_name': self.scene_name,
             'video_url': url,
             'labels': list(map(lambda : c.label, self.classifications))
+        }
+
+    def upload_dict(self):
+        return {
+            'event_name': self.event_name,
+            'video_file': self.video_file,
+            'video_location': self.video_location,
+            'scene_name': self.scene_name,
+            'capture_time': self.capture_time.isoformat(),
+            'threshold': self.threshold,
+            'noise_level': self.noise_level,
+            'lighting_type': self.lighting_type,
+            'filetype': 8
         }
 
     def file_path(self, alt_base_dir=None):

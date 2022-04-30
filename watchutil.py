@@ -6,23 +6,31 @@ import argparse
 import pathlib
 import os
 import configparser
+import requests
 
 from datetime import datetime
 from pathlib import PurePath, Path
 
 import sqlalchemy
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 import pytz
 from astral import LocationInfo
 
-from watcher import EventObservation, APIUser, TunneledConnection
+from watcher import EventObservation, APIUser, TunneledConnection, Upload
 
 config = configparser.ConfigParser()
 file = os.path.join(sys.path[0],'application.cfg')
 config.read(file)
 
-DEFAULT_WORKING_DIR = PurePath('//Volumes/Video Captures/wellerDriveway/capture')
+DEFAULT_WORKING_DIR = PurePath(config['system']['BASE_DIR']) / 'wellerDriveway/capture'
+
+query_get_not_uploaded = """
+select *
+from event_observations eo
+where id not in (select distinct event_id from uploads)
+order by eo.capture_time desc;
+"""
 
 def upload_event_in_file(session, filename):
     with open(filename) as fp:
@@ -150,9 +158,27 @@ def update_video_directory(session):
 
     print(f"upated {count} total file locations")
 
+def sync_to_remote(session):
+
+    observations = session.query(EventObservation).from_statement(text(query_get_not_uploaded))
+
+    sync_url = config['remote']['SYNC_APP_URL'] + "/observations"
+    sync_auth = (config['remote']['SYNC_USER'], config['remote']['SYNC_PASS'])
+
+    netsession = requests.Session()
+    for o in observations:
+        resp = netsession.post(sync_url, json=o.upload_dict(), auth=sync_auth)
+        if resp.status_code == 200 or resp.status_code == 201:
+            up = Upload({'event': o, 'result_code': resp.status_code})
+            session.add(up)
+        elif resp.status_code == 401:
+            print("Invalid credentials")
+            return
+
+
 def main():
     parser = argparse.ArgumentParser(description='Utilites for watcher')
-    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user', 'update_lighting', 'update_dirs'])
+    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user', 'update_lighting', 'update_dirs', 'syncup'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
     parser.add_argument('-l', '--limit', type=int)
@@ -180,6 +206,8 @@ def main():
             update_solar_lighting_type(session)
         elif args.action == 'update_dirs':
             update_video_directory(session)
+        elif args.action == 'syncup':
+            sync_to_remote(session)
         else:
             print("No action specified.")
 
