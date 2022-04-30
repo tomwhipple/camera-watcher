@@ -134,13 +134,13 @@ class EventObservation(Base):
             self.video_location = str(p.parent).removeprefix(BASE_DIR + '/')
             self.storage_local = p.is_file()
         else:
-            self.video_file = input.get('video_file')
-            self.video_location = input.get('video_location')
+            self.video_file = input.get('video_file',"")
+            self.video_location = input.get('video_location',"")
             p = Path(BASE_DIR) / self.video_location / self.video_file
             self.storage_local = p.is_file()
 
-        now = datetime.datetime.fromisoformat(input.get('capture_time',datetime.datetime.now().isoformat())).astimezone(camera_timezone)
-        self.capture_time = input.get('capture_time', now)
+        timestr = input.get('capture_time', datetime.datetime.now().isoformat())
+        self.capture_time = datetime.datetime.fromisoformat(timestr).astimezone(camera_timezone)
         self.scene_name = input.get('scene_name',"")
 
         self.event_name = input.get('event_name',"")
