@@ -161,7 +161,10 @@ def update_video_directory(session):
 
 def sync_to_remote(session):
 
-    observations = session.query(EventObservation).from_statement(text(query_get_not_uploaded))
+    observations = session.query(EventObservation).from_statement(text(query_get_not_uploaded)).all()
+    if len(observations) == 0:
+        print("Nothing to upload")
+        return
 
     sync_url = config['remote']['SYNC_APP_URL'] + "/observations"
     sync_auth = (config['remote']['SYNC_USER'], config['remote']['SYNC_PASS'])
