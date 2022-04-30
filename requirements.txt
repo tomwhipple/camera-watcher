@@ -6,3 +6,4 @@ Flask-HTTPAuth>=4.5.0
 flup
 astral
 pytest
+requests
