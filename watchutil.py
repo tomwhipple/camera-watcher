@@ -18,6 +18,7 @@ import pytz
 from astral import LocationInfo
 
 from watcher import EventObservation, APIUser, TunneledConnection, Upload
+from hardswitch import NetworkPowerSwitch
 
 config = configparser.ConfigParser()
 file = os.path.join(sys.path[0],'application.cfg')
@@ -29,7 +30,7 @@ query_get_not_uploaded = """
 select *
 from event_observations eo
 where id not in (select distinct event_id from uploads)
-order by eo.capture_time desc;
+order by eo.capture_time desc
 """
 
 def upload_event_in_file(session, filename):
@@ -165,15 +166,16 @@ def sync_to_remote(session):
     sync_url = config['remote']['SYNC_APP_URL'] + "/observations"
     sync_auth = (config['remote']['SYNC_USER'], config['remote']['SYNC_PASS'])
 
-    netsession = requests.Session()
-    for o in observations:
-        resp = netsession.post(sync_url, json=o.upload_dict(), auth=sync_auth)
-        if resp.status_code == 200 or resp.status_code == 201:
-            up = Upload({'event': o, 'result_code': resp.status_code})
-            session.add(up)
-        elif resp.status_code == 401:
-            print("Invalid credentials")
-            return
+    with NetworkPowerSwitch() as nps:
+        netsession = requests.Session()
+        for o in observations:
+            resp = netsession.post(sync_url, json=o.upload_dict(), auth=sync_auth)
+            if resp.status_code == 200 or resp.status_code == 201:
+                up = Upload({'event': o, 'result_code': resp.status_code})
+                session.add(up)
+            elif resp.status_code == 401:
+                print("Invalid credentials")
+                return
 
 
 def main():
