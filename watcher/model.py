@@ -183,14 +183,11 @@ class EventObservation(Base):
             'filetype': 8
         }
 
-    def file_path(self, alt_base_dir=None):
+    def file_path(self):
         if self.video_location and self.storage_local:
-            fullpath = os.path.join(self.video_location,self.video_file)
+            fullpath = os.path.join(BASE_DIR,self.video_location,self.video_file)
         elif self.storage_local:
             fullpath = os.path.join(BASE_DIR,self.scene_name,'capture',self.video_file)
-
-        if alt_base_dir:
-            fullpath = os.path.join(alt_base_dir, fullpath.removeprefix(BASE_DIR))
 
         return fullpath
 
