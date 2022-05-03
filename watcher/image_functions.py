@@ -1,7 +1,35 @@
+import os
+
+import ffmpeg
 import numpy as np
 import cv2 as cv
 
-__all__ = ['motion_from_initial_average', 'rescale', 'threshold_video', 'apply_mask']
+__all__ = ['motion_from_initial_average', 'rescale', 'threshold_video', 'apply_mask', 'fetch_video_from_file']
+
+def fetch_video_from_file(video_file):
+    if not video_file and not os.access(video_file, os.R_OK):
+        raise Error(f"{video_file} could not be accessed")
+
+    info = ffmpeg.probe(video_file)
+
+    video_info = next(stream for stream in info['streams'] if stream['codec_type'] == 'video')
+    width = int(video_info['width'])
+    height = int (video_info['height'])
+    num_frames = int(video_info['nb_frames'])
+
+    out, err = (
+        ffmpeg
+        .input(video_file)
+        .output('pipe:', format='rawvideo', pix_fmt='rgb24')
+        .run(capture_stdout=True)
+    );
+    video = (
+        np
+        .frombuffer(out, np.uint8)
+        .reshape([-1, height, width, 3])
+    );
+
+    return video
 
 def motion_from_initial_average(video, window_size=5):
     working = (video[window_size:,:,:,:])

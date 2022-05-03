@@ -17,12 +17,10 @@ from sqlalchemy import select, text
 import pytz
 from astral import LocationInfo
 
-from watcher import EventObservation, APIUser, TunneledConnection, Upload
+from watcher import EventObservation, APIUser, TunneledConnection, Upload, application_config
 from hardswitch import NetworkPowerSwitch
 
-config = configparser.ConfigParser()
-file = os.path.join(sys.path[0],'application.cfg')
-config.read(file)
+config = application_config()
 
 DEFAULT_WORKING_DIR = PurePath(config['system']['BASE_DIR']) / 'wellerDriveway/capture'
 

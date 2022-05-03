@@ -145,6 +145,8 @@ def create_event_observation():
 
         new_observation = EventObservation(request.json)
 
+        redis_queue().enqueue(task_save_significant_frame,new_observation.event_name)
+
         try:
             session.add(new_observation)
             session.commit()
@@ -162,11 +164,13 @@ def create_event_observation():
                     and existing_observation.scene_name == new_observation.scene_name ):
                 response_code = 200
                 response_body = jsonify(existing_observation.api_response_dict())
+
             else:
                 response_code = 400
                 msg = "Data Integrity check failed. Ensure you're not reusing file or event names"
                 app.logger.error(msg)
                 response_body = jsonify({"error": msg})
+
 
         return response_body, response_code
 
@@ -189,13 +193,13 @@ if __name__ == "__main__":
     is_cli = True
 
     parser = argparse.ArgumentParser(description='API via command line')
-    parser.add_argument('action', choices=['hello','test_database'])
+    parser.add_argument('action', choices=['hello','dbtest'])
 
     args = parser.parse_args()
 
     if args.action == 'hello':
         print(hello())
-    elif args.action == 'test_database':
+    elif args.action == 'dbtest':
         print(test_database())
     elif args.action == 'get_labels':
         print(get_labels())

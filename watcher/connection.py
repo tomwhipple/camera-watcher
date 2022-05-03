@@ -1,5 +1,7 @@
 import os
 import sys
+import redis
+from rq import Queue
 
 import configparser
 import sqlalchemy
@@ -8,15 +10,29 @@ from sqlalchemy.orm import Session
 
 from sshtunnel import SSHTunnelForwarder
 
-__all__ = ['TunneledConnection']
+APPLICATION_CONFIG_FILE = 'application.cfg'
 
-def get_config(section_name, file='None'):
+__all__ = ['TunneledConnection','application_config','redis_queue']
+
+def redis_queue():
+    conf = application_config('system')
+    shared_queue = Queue(connection=redis.Redis(host=conf.get('REDIS_HOST')))
+    return shared_queue
+
+def application_config(section_name=None):
     parser = configparser.ConfigParser()
     file = os.path.join(sys.path[0],'application.cfg')
 
     parser.read(file)
 
-    config = parser[section_name]
+    if section_name:
+        return parser[section_name]
+    else:
+        return parser
+
+def get_db_config():
+
+    config = application_config('database')
 
     db_config = {
         'connection_config':{
@@ -75,8 +91,8 @@ def get_config(section_name, file='None'):
     return db_config
 
 class TunneledConnection(object):
-    def __init__(self, config_section_name='database'):
-        self.config = get_config(config_section_name)
+    def __init__(self):
+        self.config = get_db_config()
 
         self.tunnel = get_ssh_tunnel(self.config)
         self.engine = None

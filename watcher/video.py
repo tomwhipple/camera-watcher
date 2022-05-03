@@ -1,7 +1,8 @@
 import os
+from pathlib import Path
 
-import ffmpeg
 import numpy as np
+import cv2 as cv
 
 import sqlalchemy
 from sqlalchemy import select, desc
@@ -11,43 +12,9 @@ from .model import EventObservation
 
 from .image_functions import *
 
-__all__ = ['EventVideo', 'VideoNotAvailableError']
+__all__ = ['EventVideo','task_save_significant_frame']
 
 NUM_INITAL_FRAMES_TO_AVERAGE = 5
-
-class VideoNotAvailableError(Exception):
-    def __init__(self, file):
-        if not file:
-            message = 'No filename given'
-        else:
-            message = f"{file} could not be read"
-
-        super().__init__(message)
-
-def fetch_video_from_file(video_file):
-    if not video_file and not os.access(video_file, os.R_OK):
-        raise VideoNotAvailableError(video_file)
-
-    info = ffmpeg.probe(video_file)
-
-    video_info = next(stream for stream in info['streams'] if stream['codec_type'] == 'video')
-    width = int(video_info['width'])
-    height = int (video_info['height'])
-    num_frames = int(video_info['nb_frames'])
-
-    out, err = (
-        ffmpeg
-        .input(video_file)
-        .output('pipe:', format='rawvideo', pix_fmt='rgb24')
-        .run(capture_stdout=True)
-    );
-    video = (
-        np
-        .frombuffer(out, np.uint8)
-        .reshape([-1, height, width, 3])
-    );
-
-    return video
 
 shared_tunnel = None
 def get_shared_tunnel():
@@ -106,3 +73,14 @@ class EventVideo(object):
 
 
         return self.most_significant_frame_idx
+
+def task_save_significant_frame(name):
+    vid = EventVideo(name=name)
+    f = vid.most_significant_frame()
+    img_path = Path(vid.file).parent() + f"{name}_sf.jpg"
+    img = vid.frames[f,:,:,:]
+
+    cv.imwrite(img_path, img)
+
+
+
