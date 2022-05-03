@@ -7,3 +7,5 @@ flup
 astral
 pytest
 requests
+redis
+rp

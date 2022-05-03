@@ -17,7 +17,7 @@ from sqlalchemy import select, text
 import pytz
 from astral import LocationInfo
 
-from watcher import EventObservation, APIUser, TunneledConnection, Upload, application_config
+from watcher import *
 from hardswitch import NetworkPowerSwitch
 
 config = application_config()
@@ -178,16 +178,19 @@ def sync_to_remote(session):
                 print("Invalid credentials")
                 return
 
+def enque_event(session, event_name):
+    redis_queue().enqueue(task_save_significant_frame,new_observation.event_name)
+
 
 def main():
     parser = argparse.ArgumentParser(description='Utilites for watcher')
-    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user', 'update_lighting', 'update_dirs', 'syncup'])
+    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user', 'update_lighting', 'update_dirs', 'syncup','enque'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
     parser.add_argument('-l', '--limit', type=int)
     parser.add_argument('-u', '--set_user', help='generate a key for the given user, adding them if required')
     parser.add_argument('-D', '--debug', action='store_true')
-    parser.add_argument('raw_json', nargs='*')
+    parser.add_argument('str', nargs='*')
 
     args = parser.parse_args()
 
@@ -204,16 +207,17 @@ def main():
         elif args.action == 'upload_dir':
             upload_events_in_directory(session, str(args.input_directory), args.limit)
         elif args.action == 'record_kerberos':
-            record_kerberos_event(session, args.raw_json, args.input_directory)
+            record_kerberos_event(session, args.str, args.input_directory)
         elif args.action == 'update_lighting':
             update_solar_lighting_type(session)
         elif args.action == 'update_dirs':
             update_video_directory(session)
         elif args.action == 'syncup':
             sync_to_remote(session)
+        elif args.action == enque:
+            enque_event(session, args.str)
         else:
             print("No action specified.")
-
 
         session.commit()
 
