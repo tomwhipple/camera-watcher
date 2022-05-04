@@ -9,3 +9,5 @@ pytest
 requests
 redis
 rp
+numpy
+pyimage
