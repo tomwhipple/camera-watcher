@@ -179,7 +179,7 @@ def sync_to_remote(session):
                 return
 
 def enque_event(session, event_name):
-    redis_queue().enqueue(task_save_significant_frame,new_observation.event_name)
+    redis_queue().enqueue(task_save_significant_frame,event_name)
 
 
 def main():
@@ -214,7 +214,7 @@ def main():
             update_video_directory(session)
         elif args.action == 'syncup':
             sync_to_remote(session)
-        elif args.action == enque:
+        elif args.action == 'enque':
             enque_event(session, args.str)
         else:
             print("No action specified.")

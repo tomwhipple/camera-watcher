@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 import numpy as np
-import cv2 as cv
+import imageio
 
 import sqlalchemy
 from sqlalchemy import select, desc
@@ -74,13 +74,17 @@ class EventVideo(object):
 
         return self.most_significant_frame_idx
 
-def task_save_significant_frame(name):
+def task_save_significant_frame(names):
+    name = names[0]
+
     vid = EventVideo(name=name)
+    print(f"starting video analysis for {name}")
     f = vid.most_significant_frame()
-    img_path = Path(vid.file).parent() + f"{name}_sf.jpg"
+    img_path = str(Path(vid.file).parent / f"{name}_sf.jpg")
     img = vid.frames[f,:,:,:]
 
-    cv.imwrite(img_path, img)
+    imageio.imsave(img_path, img)
+    print(f"wrote {img_path}")
 
 
 

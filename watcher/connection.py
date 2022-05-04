@@ -21,14 +21,22 @@ def redis_queue():
 
 def application_config(section_name=None):
     parser = configparser.ConfigParser()
-    file = os.path.join(sys.path[0],'application.cfg')
+
+    file = os.environ.get('WATCHER_CONFIG', os.path.join(sys.path[0],'application.cfg'))
+
+    if not file or not os.access(file, os.R_OK):
+        msg = f"couldn't read config file {file}"
+        raise Exception(msg)
 
     parser.read(file)
 
     if section_name:
-        return parser[section_name]
+        cfg = parser[section_name]
     else:
-        return parser
+        cfg = parser
+
+    return cfg
+
 
 def get_db_config():
 

@@ -21,11 +21,11 @@ from astral import LocationInfo
 from astral.sun import sun
 import pytz
 
+from .connection import application_config
+
 __all__ = ['MotionEvent', 'EventObservation', 'EventClassification', 'APIUser', 'Upload']
 
-config = configparser.ConfigParser()
-file = os.path.join(sys.path[0],'application.cfg')
-config.read(file)
+config = application_config()
 
 BASE_URL=config['system'].get('BASE_URL')
 BASE_DIR=config['system'].get('BASE_DIR')

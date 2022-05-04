@@ -10,7 +10,15 @@ def fetch_video_from_file(video_file):
     if not video_file and not os.access(video_file, os.R_OK):
         raise Error(f"{video_file} could not be accessed")
 
-    info = ffmpeg.probe(video_file)
+    info = None
+    try:
+        info = ffmpeg.probe(video_file)
+    except Exception as e:
+        print(dir(e))
+        print(f"STDERR: {e.stderr}")
+        print(f"STDOUT: {e.stdout}")
+
+        raise e
 
     video_info = next(stream for stream in info['streams'] if stream['codec_type'] == 'video')
     width = int(video_info['width'])

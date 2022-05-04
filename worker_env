@@ -1,0 +1,6 @@
+# source this file prior to running redis worker
+
+export WATCHER_CONFIG=`pwd`/application.cfg
+
+# work around a bug on OSX.
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
