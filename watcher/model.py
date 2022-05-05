@@ -154,6 +154,16 @@ class EventObservation(Base):
         self.lighting_type = input.get('lighting_type',sunlight_from_time_for_location(self.capture_time, camera_location))
 
     def api_response_dict(self):
+        return {
+            'event_observation_id': self.id,
+            'video_file': self.video_file,
+            'capture_time': self.capture_time.isoformat(),
+            'scene_name': self.scene_name,
+            'video_url': self.video_url(),
+            'labels': list(map(lambda : c.label, self.classifications))
+        }
+
+    def video_url(self):
         url = BASE_URL 
 
         if self.video_location and self.storage_local:
@@ -161,14 +171,7 @@ class EventObservation(Base):
         else:
             url += self.scene_name + "/capture/" + self.video_file
 
-        return {
-            'event_observation_id': self.id,
-            'video_file': self.video_file,
-            'capture_time': self.capture_time.isoformat(),
-            'scene_name': self.scene_name,
-            'video_url': url,
-            'labels': list(map(lambda : c.label, self.classifications))
-        }
+        return url
 
     def upload_dict(self):
         return {

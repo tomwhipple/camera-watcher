@@ -1,4 +1,5 @@
 import os
+import time
 from pathlib import Path
 
 import numpy as np
@@ -56,6 +57,8 @@ class EventVideo(object):
                 
                 session = self.get_session()
                 self.event = session.execute(stmt).scalar()
+                if not self.event:
+                    raise Exception(f'event {self.name} not found')
 
             self.file = self.event.file_path()
 
@@ -63,7 +66,6 @@ class EventVideo(object):
 
     def most_significant_frame(self):
         if not self.most_significant_frame_idx:
-            # working = (video[NUM_INITAL_FRAMES_TO_AVERAGE:,:,:,:])
             avg = (np.mean(self.frames[0:NUM_INITAL_FRAMES_TO_AVERAGE,:,:,:], axis=0))
             L1_dist = abs(self.frames - avg)
             norms = rescale(np.linalg.norm(L1_dist, axis=-1))
@@ -71,11 +73,12 @@ class EventVideo(object):
             thresh_sums = np.sum(thresh, axis=(1,2))
             self.most_significant_frame_idx = np.argmax(thresh_sums)
 
-
         return self.most_significant_frame_idx
 
 def task_save_significant_frame(names):
     name = names[0]
+
+    time.sleep(1)
 
     vid = EventVideo(name=name)
     print(f"starting video analysis for {name}")
