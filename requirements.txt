@@ -8,6 +8,6 @@ astral
 pytest
 requests
 redis
-rp
+rq
 numpy
 pyimage
