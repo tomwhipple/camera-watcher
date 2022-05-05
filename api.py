@@ -10,7 +10,8 @@ from flask import *
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import InternalServerError, BadRequest
 
-from watcher import *
+from watcher.model import *
+from watcher.connection import *
 
 query_uncategorized_sql = """select * 
 from event_observations obs 
@@ -145,7 +146,7 @@ def create_event_observation():
 
         new_observation = EventObservation(request.json)
 
-        redis_queue().enqueue(task_save_significant_frame,new_observation.event_name)
+        redis_queue().enqueue('watcher.video.task_save_significant_frame', new_observation.event_name)
 
         try:
             session.add(new_observation)
