@@ -1,7 +1,7 @@
 import os
 import time
 from pathlib import Path
-from rq import Queue
+from rq import Queue, Retry
 
 import numpy as np
 from PIL import Image
@@ -92,13 +92,8 @@ def task_save_significant_frame(name):
         img_path = str(Path(vid.file).parent / f"{name}_sf.jpg")
         img_relpath = str(Path(vid.event.video_location) / f"{name}_sf.jpg")
         img = Image.fromarray(vid.frames[f,:,:,:],mode='RGB')
-        # img_size = img.size
-
-        # print(f"significant frame for {name} is {f}")
-        # imageio.imsave(img_path, img)
-        # print(f"wrote {img_path}")
 
         queue = Queue('write_image', connection = redis_connection())
-        queue.enqueue(task_write_image, args=(img, img_relpath))
+        queue.enqueue(task_write_image, args=(img, img_relpath), retry=Retry(max=3, interval=5*60))
 
 
