@@ -12,14 +12,15 @@ from sshtunnel import SSHTunnelForwarder
 
 APPLICATION_CONFIG_FILE = 'application.cfg'
 
-__all__ = ['TunneledConnection','application_config','redis_queue']
+__all__ = ['TunneledConnection','application_config','redis_connection']
 
-def redis_queue():
-    conf = application_config('system')
-    shared_queue = Queue(connection=redis.Redis(host=conf.get('REDIS_HOST')))
-    return shared_queue
+def redis_connection():
+    return redis.Redis(host=application_config('system','REDIS_HOST'))
 
-def application_config(section_name=None):
+# def redis_queue():
+#     return Queue(connection=redis_connection())
+
+def application_config(section_name=None, config_variable=None):
     parser = configparser.ConfigParser()
 
     file = os.environ.get('WATCHER_CONFIG', os.path.join(sys.path[0],'application.cfg'))
@@ -32,6 +33,8 @@ def application_config(section_name=None):
 
     if section_name:
         cfg = parser[section_name]
+        if config_variable:
+            return cfg.get(config_variable)
     else:
         cfg = parser
 

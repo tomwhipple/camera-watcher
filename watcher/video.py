@@ -1,17 +1,19 @@
 import os
 import time
 from pathlib import Path
+from rq import Queue
 
 import numpy as np
-import imageio
+from PIL import Image
 
 import sqlalchemy
 from sqlalchemy import select, desc
 
-from .connection import TunneledConnection
+from .connection import TunneledConnection, redis_connection, application_config
 from .model import EventObservation
 
 from .image_functions import *
+from .lite_tasks import *
 
 __all__ = ['EventVideo','task_save_significant_frame']
 
@@ -58,7 +60,8 @@ class EventVideo(object):
                 session = self.get_session()
                 self.event = session.execute(stmt).scalar()
                 if not self.event:
-                    raise Exception(f'event {self.name} not found')
+                    msg = f'event {self.name} not found'
+                    raise Exception(msg)
 
             self.file = self.event.file_path()
 
@@ -75,19 +78,27 @@ class EventVideo(object):
 
         return self.most_significant_frame_idx
 
-def task_save_significant_frame(names):
-    name = names[0]
+def task_save_significant_frame(name):
+    if isinstance(name, list):
+        name = name[0]
+    
+    with TunneledConnection() as tc:
+        session = sqlalchemy.orm.Session(tc)
 
-    time.sleep(1)
+        vid = EventVideo(name=name, session=session)
 
-    vid = EventVideo(name=name)
-    print(f"starting video analysis for {name}")
-    f = vid.most_significant_frame()
-    img_path = str(Path(vid.file).parent / f"{name}_sf.jpg")
-    img = vid.frames[f,:,:,:]
+        print(f"starting video analysis for {name}")
+        f = vid.most_significant_frame()
+        img_path = str(Path(vid.file).parent / f"{name}_sf.jpg")
+        img_relpath = str(Path(vid.event.video_location) / f"{name}_sf.jpg")
+        img = Image.fromarray(vid.frames[f,:,:,:],mode='RGB')
+        # img_size = img.size
 
-    imageio.imsave(img_path, img)
-    print(f"wrote {img_path}")
+        # print(f"significant frame for {name} is {f}")
+        # imageio.imsave(img_path, img)
+        # print(f"wrote {img_path}")
 
+        queue = Queue('write_image', connection = redis_connection())
+        queue.enqueue(task_write_image, args=(img, img_relpath))
 
 

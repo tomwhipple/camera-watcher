@@ -13,6 +13,7 @@ from pathlib import PurePath, Path
 
 import sqlalchemy
 from sqlalchemy import select, text
+from rq import Queue
 
 import pytz
 from astral import LocationInfo
@@ -179,7 +180,11 @@ def sync_to_remote(session):
                 return
 
 def enque_event(session, event_name):
-    redis_queue().enqueue(task_save_significant_frame,event_name)
+    from watcher.video import task_save_significant_frame
+    
+    queue = Queue(connection = redis_connection())
+    queue.enqueue(task_save_significant_frame,event_name)
+
 
 
 def main():
