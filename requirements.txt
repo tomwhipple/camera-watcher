@@ -11,3 +11,4 @@ redis
 rq
 numpy
 pyimage
+ffmpeg
