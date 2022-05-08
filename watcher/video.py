@@ -65,6 +65,9 @@ class EventVideo(object):
 
             self.file = self.event.file_path()
 
+        if not self.file or not os.access(self.file, os.R_OK):
+            self.file = self.event.video_url()
+
         self.frames = fetch_video_from_file(self.file)
 
     def most_significant_frame(self):

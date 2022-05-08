@@ -7,9 +7,6 @@ import cv2 as cv
 __all__ = ['motion_from_initial_average', 'rescale', 'threshold_video', 'apply_mask', 'fetch_video_from_file']
 
 def fetch_video_from_file(video_file):
-    if not video_file and not os.access(video_file, os.R_OK):
-        raise Error(f"{video_file} could not be accessed")
-
     info = None
     try:
         info = ffmpeg.probe(video_file)
@@ -38,6 +35,7 @@ def fetch_video_from_file(video_file):
     );
 
     return video
+
 
 def motion_from_initial_average(video, window_size=5):
     working = (video[window_size:,:,:,:])
