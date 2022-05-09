@@ -72,12 +72,12 @@ class EventVideo(object):
 
     def most_significant_frame(self):
         if not self.most_significant_frame_idx:
-            avg = (np.mean(self.frames[0:NUM_INITAL_FRAMES_TO_AVERAGE,:,:,:], axis=0))
-            L1_dist = abs(self.frames - avg)
-            norms = rescale(np.linalg.norm(L1_dist, axis=-1))
-            thresh = threshold_video(norms)
-            thresh_sums = np.sum(thresh, axis=(1,2))
-            self.most_significant_frame_idx = np.argmax(thresh_sums)
+            tmp1 = (np.mean(self.frames[0:NUM_INITAL_FRAMES_TO_AVERAGE,:,:,:], axis=0))
+            tmp2 = abs(self.frames - tmp1)
+            tmp1 = rescale(np.linalg.norm(tmp2, axis=-1))
+            tmp2 = threshold_video(tmp1)
+            tmp1 = np.sum(tmp2, axis=(1,2))
+            self.most_significant_frame_idx = np.argmax(tmp1)
 
         return self.most_significant_frame_idx
 
