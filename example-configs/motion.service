@@ -13,6 +13,7 @@ ExecStart=/usr/local/bin/motion
 
 User=motion
 Group=video
+UMask=0002
 
 [Install]
 WantedBy=multi-user.target

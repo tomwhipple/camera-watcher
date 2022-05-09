@@ -1,0 +1,22 @@
+# /etc/systemd/system/worker_io.service
+#
+# See also https://wiki.debian.org/systemd/Services
+
+[Unit]
+Description=Motion Service (to monitor cameras)
+After=Network.target
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/home/pi/camera-watcher/pyenv-watcher/bin/python /usr/local/bin/rq worker -u redis://192.168.0.2 -s write_image
+Environment=WATCHER_CONFIG=/home/pi/camera-watcher/application.cfg
+WorkingDirectory=/home/pi/camera-watcher
+
+User=motion
+Group=video
+UMask=0002
+
+[Install]
+WantedBy=multi-user.target
+
