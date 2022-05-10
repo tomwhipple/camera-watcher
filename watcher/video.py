@@ -95,7 +95,7 @@ def task_save_significant_frame(name):
         print(f"starting video analysis for {name}")
         f = vid.most_significant_frame()
         img_path = str(Path(vid.file).parent / f"{name}_sf.jpg")
-        img_relpath = str(Path(vid.event.video_location) / f"{name}_sf.jpg")
+        img_relpath = str(Path(vid.event.video_location) / f"{name}_f{f}.jpg")
         img = Image.fromarray(vid.frames[f,:,:,:],mode='RGB')
 
         queue = Queue('write_image', connection = redis_connection())

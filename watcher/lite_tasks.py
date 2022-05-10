@@ -32,9 +32,14 @@ def task_record_event(event_class, input_json_str):
 
     with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(tc)
-        
         new_event = eventClass(input_dict)
-        session.add(new_event)
-        session.commit()
 
-        print(f"recorded {event_class} {new_event.id} - {new_event.event_name}")
+        try:
+            session.add(new_event)
+            session.commit()
+
+            print(f"recorded {event_class} {new_event.id} - {new_event.event_name}")
+        except sqlalchemy.exc.IntegrityError as ie:
+            session.rollback()
+
+            print(f"ignoring duplicate database entry: {ie._message} ({ie._sql_message}")       
