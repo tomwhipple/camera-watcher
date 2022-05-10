@@ -128,16 +128,16 @@ class EventObservation(Base):
         camera_location = LocationInfo()
 
         video_fullpath = input.get('video_fullpath')
+        local_root = input.get('video_root', BASE_DIR)
         if video_fullpath:
             p = Path(video_fullpath)
             self.video_file = str(p.name)
-            self.video_location = str(p.parent).removeprefix(BASE_DIR + '/')
-            self.storage_local = p.is_file()
+            self.video_location = str(p.parent).removeprefix(local_root + '/')
         else:
             self.video_file = input.get('video_file',"")
             self.video_location = input.get('video_location',"")
-            p = Path(BASE_DIR) / self.video_location / self.video_file
-            self.storage_local = p.is_file()
+
+        self.storage_local = self.file_path().is_file()
 
         timestr = input.get('capture_time', datetime.datetime.now().isoformat())
         self.capture_time = datetime.datetime.fromisoformat(timestr).astimezone(camera_timezone)
@@ -187,10 +187,11 @@ class EventObservation(Base):
         }
 
     def file_path(self):
-        if self.video_location and self.storage_local:
-            fullpath = os.path.join(BASE_DIR,self.video_location,self.video_file)
-        elif self.storage_local:
-            fullpath = os.path.join(BASE_DIR,self.scene_name,'capture',self.video_file)
+        fullpath = Path(BASE_DIR)
+        if self.video_location:
+            fullpath = fullpath / self.video_location / self.video_file
+        else:
+            fullpath = fullpath / self.scene_name / 'capture' / self.video_file
 
         return fullpath
 
