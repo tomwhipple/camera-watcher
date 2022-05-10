@@ -13,7 +13,10 @@ from pathlib import PurePath, Path
 
 import sqlalchemy
 from sqlalchemy import select, text
+
 from rq import Queue
+from rq.registry import FailedJobRegistry
+from rq.job import Job
 
 import pytz
 from astral import LocationInfo
@@ -181,21 +184,34 @@ def sync_to_remote(session):
 
 def enque_event(session, event_name):
     from watcher.video import task_save_significant_frame
-    
-    queue = Queue(connection = redis_connection())
+
+    queue = Queue(connection=redis_connection())
     queue.enqueue(task_save_significant_frame,event_name)
 
+def show_failed(sub_args=None):
+    queue = Queue(connection=redis_connection())
+    failed = FailedJobRegistry(queue=queue)
 
+    purge_failed = (sub_args and len(sub_args) > 0 and sub_args[0] == 'purge')
+
+    print("Failed jobs on image queue:")
+    for job_id in failed.get_job_ids():
+        job = Job.fetch(job_id, connection=redis_connection())
+        if purge_failed:
+            job.delete()
+            print(f"deleted job {job_id}")
+        else:
+            print(job_id, job.exc_info)
 
 def main():
     parser = argparse.ArgumentParser(description='Utilites for watcher')
-    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user', 'update_lighting', 'update_dirs', 'syncup','enque'])
+    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user', 'update_lighting', 'update_dirs', 'syncup','enque','failed'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
     parser.add_argument('-l', '--limit', type=int)
     parser.add_argument('-u', '--set_user', help='generate a key for the given user, adding them if required')
     parser.add_argument('-D', '--debug', action='store_true')
-    parser.add_argument('str', nargs='*')
+    parser.add_argument('sub_args', nargs='*')
 
     args = parser.parse_args()
 
@@ -212,7 +228,7 @@ def main():
         elif args.action == 'upload_dir':
             upload_events_in_directory(session, str(args.input_directory), args.limit)
         elif args.action == 'record_kerberos':
-            record_kerberos_event(session, args.str, args.input_directory)
+            record_kerberos_event(session, args.sub_args, args.input_directory)
         elif args.action == 'update_lighting':
             update_solar_lighting_type(session)
         elif args.action == 'update_dirs':
@@ -221,6 +237,8 @@ def main():
             sync_to_remote(session)
         elif args.action == 'enque':
             enque_event(session, args.str)
+        elif args.action == 'failed':
+            show_failed(args.sub_args)
         else:
             print("No action specified.")
 
