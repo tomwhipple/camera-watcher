@@ -236,7 +236,7 @@ def main():
         elif args.action == 'syncup':
             sync_to_remote(session)
         elif args.action == 'enque':
-            enque_event(session, args.str)
+            enque_event(session, args.sub_args)
         elif args.action == 'failed':
             show_failed(args.sub_args)
         else:
