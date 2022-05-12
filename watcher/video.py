@@ -97,6 +97,7 @@ def task_save_significant_frame(name):
 
         img_relpath = str(Path(vid.event.video_location) / f"{name}_f{f}.jpg")
         img = Image.fromarray(vid.frames[f,:,:,:],mode='RGB')
+        print(f"found frame {f} for {name}. Will store as {img_relpath}")
 
         queue = Queue('write_image', connection = redis_connection())
         queue.enqueue(task_write_image, args=(img, img_relpath), retry=Retry(max=3, interval=5*60))

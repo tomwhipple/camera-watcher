@@ -182,11 +182,12 @@ def sync_to_remote(session):
                 print("Invalid credentials")
                 return
 
-def enque_event(session, event_name):
+def enque_event(session, event_names):
     from watcher.video import task_save_significant_frame
 
-    queue = Queue(connection=redis_connection())
-    queue.enqueue(task_save_significant_frame,event_name)
+    for name in event_names: 
+        queue = Queue(connection=redis_connection())
+        queue.enqueue(task_save_significant_frame,name)
 
 def show_failed(sub_args=None):
     queue = Queue(connection=redis_connection())
