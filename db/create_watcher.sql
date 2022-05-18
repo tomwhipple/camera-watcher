@@ -94,3 +94,17 @@ ALTER TABLE uploads ADD INDEX upload_idx (event_id, event_type);
 ALTER TABLE uploads
 	ADD COLUMN IF NOT EXISTS id SERIAL,
 	ADD PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS computations (
+	id SERIAL,
+	event_name VARCHAR(100),
+	method_name VARCHAR(30),
+	computed_at TIMESTAMP,
+	elapsed_seconds DOUBLE,
+	git_version VARCHAR(20),
+	host_info TINYTEXT,
+	success BOOLEAN NOT NULL,
+	result LONGTEXT,
+	result_file VARCHAR(100),
+	result_file_location VARCHAR(100)
+);

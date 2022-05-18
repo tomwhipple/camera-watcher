@@ -1,5 +1,6 @@
 import os
 import time
+import json
 
 from pathlib import Path
 from rq import Queue, Retry
@@ -12,7 +13,7 @@ import sqlalchemy
 from sqlalchemy import select, desc
 
 from .connection import TunneledConnection, redis_connection, application_config
-from .model import EventObservation
+from .model import EventObservation, Computation
 
 from .image_functions import *
 from .lite_tasks import *
@@ -120,23 +121,46 @@ def task_save_significant_frame(name):
         name = name[0]
     
     with TunneledConnection() as tc:
+        result = {}
         session = sqlalchemy.orm.Session(tc)
+        comp = Computation(event_name=name, method_name='task_save_significant_frame')
+        try: 
+            comp.start_timer()
 
-        vid = EventVideo(name=name, session=session)
+            vid = EventVideo(name=name, session=session)
 
-        print(f"VIDEO WORKER: found {vid.width} x {vid.height} color video with {vid.num_frames} frames")
-        print(f"VIDEO WORKER: expect to need at least {vid.bytes_needed()/(1024 *1024)} MB")
+            print(f"VIDEO WORKER: found {vid.width} x {vid.height} color video with {vid.num_frames} frames")
+            print(f"VIDEO WORKER: expect to need at least {vid.bytes_needed()/(1024 *1024)} MB")
 
-        vid.load_frames()
+            vid.load_frames()
 
-        print(f"starting video analysis for {name}")
-        f = vid.most_significant_frame()
+            print(f"starting video analysis for {name}")
+            f = vid.most_significant_frame()
+            result['most_significant_frame'] = int(f)
+            result['number_of_frames'] = vid.num_frames
 
-        img_relpath = str(Path(vid.event.video_location) / f"{name}_f{f}.jpg")
-        img = Image.fromarray(vid.frames[f,:,:,:],mode='RGB')
+            img_relpath = Path(vid.event.video_location) / f"{name}_f{f}.jpg"
+            img = Image.fromarray(vid.frames[f,:,:,:],mode='RGB')
+
+            comp.result_file = img_relpath.name
+            comp.result_file_location = img_relpath.parent
+            comp.success = True
+
+            queue = Queue('write_image', connection = redis_connection())
+            queue.enqueue(task_write_image, args=(img, str(img_relpath)), retry=Retry(max=3, interval=5*60))
+
+        except Exception as e:
+            result['error'] = json.dumps(str(e))
+            comp.success = False
+            raise e
+
+        finally: 
+            comp.end_timer()
+            comp.result = json.dumps(result, sort_keys=True)
+
+            session.add(comp)
+            session.commit()
+
         print(f"found frame {f} for {name}. Will store as {img_relpath}")
-
-        queue = Queue('write_image', connection = redis_connection())
-        queue.enqueue(task_write_image, args=(img, img_relpath), retry=Retry(max=3, interval=5*60))
 
 

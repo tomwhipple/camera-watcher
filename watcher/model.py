@@ -7,6 +7,9 @@ import random
 import string
 import configparser
 import datetime
+import platform
+import time
+import subprocess
 
 import sqlalchemy
 
@@ -23,7 +26,7 @@ import pytz
 
 from .connection import application_config
 
-__all__ = ['MotionEvent', 'EventObservation', 'EventClassification', 'APIUser', 'Upload']
+__all__ = ['MotionEvent', 'EventObservation', 'EventClassification', 'APIUser', 'Upload', 'Computation']
 
 config = application_config()
 
@@ -46,6 +49,35 @@ class Upload(Base):
         self.event_id = event.id
         self.event_type = type(event).__name__
         self.result_code = input.get('result_code')
+
+class Computation(Base):
+    __tablename__ = 'computations'
+    id = Column(BigInteger, primary_key=True)
+    event_name = Column(String)
+    method_name = Column(String)
+    computed_at = Column(DateTime)
+    elapsed_seconds = Column(Float)
+    git_version = Column(String)
+    host_info = Column(String)
+    success = Column(Boolean)
+    result = Column(String)
+    result_file = Column(String)
+    result_file_location = Column(String)
+
+    timer = 0
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+        self.host_info = kwargs.get('host_info',json.dumps(platform.uname()))
+        self.git_version = kwargs.get('git_version',subprocess.check_output('git describe --always --dirty --tags'.split()).decode('utf-8').strip())
+
+    def start_timer(self):
+        self.computed_at = datetime.datetime.now()
+        self.timer = time.process_time()
+
+    def end_timer(self):
+        self.elapsed_seconds = time.process_time() - self.timer
 
 class MotionEvent(Base):
     __tablename__ = 'motion_events'
