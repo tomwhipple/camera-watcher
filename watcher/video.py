@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import math
 
 from pathlib import Path
 from rq import Queue, Retry
@@ -102,7 +103,7 @@ class EventVideo(object):
             chunk_size = MAX_FRAMES_PER_CHUNK
             avg = (np.mean(self.frames[0:NUM_INITAL_FRAMES_TO_AVERAGE,:,:,:], axis=0, dtype=np.float32))
 
-            for i in range(0, int(self.num_frames/chunk_size)):
+            for i in range(0, math.ceil(self.num_frames/chunk_size)):
                 begin = i * chunk_size
                 end = min((i+1) * chunk_size -1, self.num_frames)
 
