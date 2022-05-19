@@ -111,7 +111,7 @@ class EventVideo(object):
                 norms = rescale(np.linalg.norm(L1_dist, axis=-1))
                 thresh = threshold_video(norms)
 
-                thresh_sums.append(np.sum(thresh, axis=(1,2)))
+                thresh_sums = np.append(thresh_sums, np.sum(thresh, axis=(1,2)))
 
             self.most_significant_frame_idx = np.argmax(thresh_sums)
 
@@ -129,9 +129,6 @@ def task_save_significant_frame(name):
             comp.start_timer()
 
             vid = EventVideo(name=name, session=session)
-
-            print(f"VIDEO WORKER: found {vid.width} x {vid.height} color video with {vid.num_frames} frames")
-            print(f"VIDEO WORKER: expect to need at least {vid.bytes_needed()/(1024 *1024)} MB")
 
             vid.load_frames()
 
