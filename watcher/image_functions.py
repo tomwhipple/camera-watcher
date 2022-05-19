@@ -45,6 +45,8 @@ def motion_from_initial_average(video, window_size=5):
     return rescale(abs(working - avg)), rescale(avg), working
 
 def rescale(f):
+    if np.size(f) == 0:
+        return f
     return np.uint8(((f - np.min(f))/(np.max(f) - np.min(f))) * 255)
 
 def threshold_video(grey_frames, kern = np.ones((7,7), np.uint8)):
