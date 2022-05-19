@@ -6,12 +6,13 @@ import json
 import random
 import string
 import configparser
-import datetime
 import platform
 import time
 import subprocess
 
 import sqlalchemy
+
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Enum, Boolean, Integer
 from sqlalchemy.orm import declarative_base
@@ -45,7 +46,7 @@ class Upload(Base):
 
     def __init__(self, input):
         event = input.get('event')
-        self.sync_at = input.get('sync_at', datetime.datetime.now())
+        self.sync_at = input.get('sync_at', datetime.now(timezone.utc))
         self.event_id = event.id
         self.event_type = type(event).__name__
         self.result_code = input.get('result_code')
@@ -73,7 +74,7 @@ class Computation(Base):
         self.git_version = kwargs.get('git_version',subprocess.check_output('git describe --always --dirty --tags'.split()).decode('utf-8').strip())
 
     def start_timer(self):
-        self.computed_at = datetime.datetime.now()
+        self.computed_at = datetime.now(timezone.utc)
         self.timer = time.process_time()
 
     def end_timer(self):
@@ -154,7 +155,7 @@ class EventObservation(Base):
 
     def __init__(self, input):
         # we want to be sure we're not caching timezone offsets inadvertently
-        camera_timezone = datetime.datetime.now().astimezone().tzinfo
+        camera_timezone = datetime.now().astimezone().tzinfo
         if config['location'].get('TIMEZONE'):
             camera_timezone = pytz.timezone(config['location'].get('TIMEZONE')) 
         camera_location = LocationInfo()
@@ -171,8 +172,8 @@ class EventObservation(Base):
 
         self.storage_local = self.file_path().is_file()
 
-        timestr = input.get('capture_time', datetime.datetime.now().isoformat())
-        self.capture_time = datetime.datetime.fromisoformat(timestr).astimezone(camera_timezone)
+        timestr = input.get('capture_time', datetime.now().isoformat())
+        self.capture_time = datetime.fromisoformat(timestr).astimezone(camera_timezone)
         self.scene_name = input.get('scene_name',"")
 
         self.event_name = input.get('event_name',"")
@@ -230,7 +231,7 @@ class EventObservation(Base):
 
 def sunlight_from_time_for_location(timestamp, location):
     lighting_type = 'midnight'
-    time_occurs = prev_occurs = datetime.datetime(1970,1,1).astimezone()
+    time_occurs = prev_occurs = datetime(1970,1,1).astimezone()
 
     for this_lighting_type, this_time_occurs in sun(location.observer, date=timestamp).items():
         if timestamp > prev_occurs and timestamp >= this_time_occurs:
