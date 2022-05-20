@@ -108,3 +108,11 @@ CREATE TABLE IF NOT EXISTS computations (
 	result_file VARCHAR(100),
 	result_file_location VARCHAR(100)
 );
+
+ALTER TABLE uploads
+	CHANGE COLUMN event_id object_id BIGINT UNSIGNED NOT NULL,
+	CHANGE COLUMN event_type object_class VARCHAR(20),
+	CHANGE COLUMN result_code http_status SMALLINT,
+	ADD COLUMN upload_batch VARCHAR(40)
+;
+	

@@ -12,4 +12,5 @@ rq
 numpy
 pyimage
 ffmpeg-python
+requests-toolbelt>=0.9.1
 

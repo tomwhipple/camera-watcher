@@ -14,7 +14,7 @@ import sqlalchemy
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Enum, Boolean, Integer
+from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Enum, Boolean, Integer, text
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -27,7 +27,7 @@ import pytz
 
 from .connection import application_config
 
-__all__ = ['MotionEvent', 'EventObservation', 'EventClassification', 'APIUser', 'Upload', 'Computation']
+__all__ = ['MotionEvent', 'EventObservation', 'EventClassification', 'APIUser', 'Upload', 'Computation', 'JSONEncoder']
 
 config = application_config()
 
@@ -36,20 +36,50 @@ BASE_DIR=config['system'].get('BASE_DIR')
 
 Base = declarative_base()
 
+class JSONEncoder(json.JSONEncoder):
+    def default(self, o):
+
+        if isinstance(o, datetime):
+            return o.isoformat()
+
+        if type(o).__name__ in ['Computation', 'MotionEvent', 'EventObservation', 'EventClassification']:
+
+            result = o.__dict__.copy()
+            for k in o.__dict__.keys():
+                if k[0] == '_':
+                    del result[k]
+                elif isinstance(result[k], datetime):
+                    result[k] = result[k].isoformat()
+
+            return result
+
+        return json.JSONEncoder.default(self,o)
+
 class Upload(Base):
     __tablename__ = 'uploads'
     id = Column(BigInteger, primary_key=True)
     sync_at = Column(DateTime)
-    event_id = Column(BigInteger)
-    event_type = Column(String)
-    result_code = Column(Integer)
+    object_class = Column(String)
+    object_id = Column(BigInteger)
+    http_status = Column(Integer)
+    upload_batch = Column(String)
 
-    def __init__(self, input):
-        event = input.get('event')
-        self.sync_at = input.get('sync_at', datetime.now(timezone.utc))
-        self.event_id = event.id
-        self.event_type = type(event).__name__
-        self.result_code = input.get('result_code')
+    def __init__(self, input=None):
+        if input:
+            event = input.get('event')
+            self.sync_at = input.get('sync_at', datetime.now(timezone.utc))
+            self.object_id = event.id
+            self.object_class = type(event).__name__
+            self.http_status = input.get('http_status')
+
+    def record(self, object, batch_id=None):
+        self.object_class = type(object).__name__
+        self.object_id = object.id
+        self.upload_batch = batch_id
+
+        self.sync_at = datetime.now(timezone.utc)
+
+        return self
 
 class Computation(Base):
     __tablename__ = 'computations'
@@ -79,6 +109,19 @@ class Computation(Base):
 
     def end_timer(self):
         self.elapsed_seconds = time.process_time() - self.timer
+
+    def result_file_fullpath(self):
+        if not self.result_file:
+            return None
+        return Path(BASE_DIR) / self.result_file_location / self.result_file
+
+    def sync_select():
+        return text("""
+select *
+from computations c
+where id not in (select distinct object_id from uploads where object_class = 'Computation' and http_status < 400)
+order by c.computed_at desc limit 5
+""")
 
 class MotionEvent(Base):
     __tablename__ = 'motion_events'
@@ -228,6 +271,13 @@ class EventObservation(Base):
 
         return fullpath
 
+    def sync_select():
+        return text("""
+select *
+from event_observations eo
+where id not in (select distinct object_id from uploads where object_class = 'EventObservation' and http_status < 400)
+order by eo.capture_time desc limit 5
+""")
 
 def sunlight_from_time_for_location(timestamp, location):
     lighting_type = 'midnight'

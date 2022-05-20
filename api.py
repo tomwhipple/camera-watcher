@@ -9,9 +9,11 @@ from sqlalchemy import text, select
 from flask import *
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import InternalServerError, BadRequest
+from rq import Queue, Retry
 
 from watcher.model import *
 from watcher.connection import *
+from watcher.lite_tasks import task_record_event
 
 query_uncategorized_sql = """select * 
 from event_observations obs 
@@ -27,7 +29,7 @@ is_cli = None
 @app.before_request
 def log_before():
     app.logger.debug('Headers: %s', request.headers)
-    app.logger.debug('Body: %s', request.get_data())
+#    app.logger.debug('Body: %s', request.get_data())
 
 @app.after_request
 def log_after(response):
@@ -37,14 +39,14 @@ def log_after(response):
 
 @app.errorhandler(InternalServerError)
 def log_internal_error(e):
-    app.logger.error('request body: %s', request.get_data())
+#    app.logger.error('request body: %s', request.get_data())
     app.logger.error(e)
 
     return "oops", 500
 
 @app.errorhandler(BadRequest)
 def log_bad_request(e):
-    app.logger.error('request body: %s', request.get_data())
+#    app.logger.error('request body: %s', request.get_data())
     app.logger.error(e)
 
     return e, 400
@@ -69,6 +71,20 @@ def test_database():
 
     return {'number_of_observations': num_observations}
 
+
+@app.route("/batch", methods=['POST'])
+@auth.login_required
+def recieve_batch():
+    queue = Queue('record_event', connection = redis_connection())
+
+    for k in request.form.keys():
+        c, __ = k.split('_')
+
+        j = request.form[k]
+
+        queue.enqueue(task_record_event,args=(c, j))
+
+    return 'ACCEPTED', 202
 
 @app.route("/uncategorized")
 @auth.login_required

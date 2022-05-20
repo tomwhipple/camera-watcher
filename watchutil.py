@@ -10,9 +10,12 @@ import requests
 
 from datetime import datetime
 from pathlib import PurePath, Path
+from uuid import uuid1
 
 import sqlalchemy
 from sqlalchemy import select, text
+
+from requests_toolbelt import MultipartEncoder
 
 from rq import Queue
 from rq.registry import FailedJobRegistry
@@ -182,6 +185,43 @@ def sync_to_remote(session):
                 print("Invalid credentials")
                 return
 
+def batch_sync_to_remote(session):
+    sync_url = config['remote']['SYNC_APP_URL'] + "/batch"
+    sync_auth = (config['remote']['SYNC_USER'], config['remote']['SYNC_PASS'])
+
+    with NetworkPowerSwitch() as nps:
+        batch_id = uuid1()
+        multipart = {}
+
+        for cls_str in ['EventObservation', 'Computation']:
+            c = globals()[cls_str]
+
+            objects = session.query(c).from_statement(c.sync_select()).all()        
+
+            i = 0
+            for o in objects:
+                multipart[f"{cls_str}_{i}"] = json.dumps(o, cls=JSONEncoder)
+
+                if cls_str == 'Computation' and o.result_file_fullpath():
+                    file_relpath = str(Path(o.result_file_location) / o.result_file)
+                    multipart[f"img_file_{i}"] = (file_relpath, open(o.result_file_fullpath(), 'rb'), 'image/jpeg')
+
+                u = Upload().record(o, batch_id)
+                session.add(u)
+
+                i += 1
+
+        m = MultipartEncoder(fields=multipart)
+        resp = requests.post(sync_url, data=m, headers={'Content-Type': m.content_type}, auth=sync_auth)
+        if resp.status_code == 401:
+            print(f"Invalid credentials for {sync_auth}")
+            session.rollback()
+            return
+        else:
+            session.query(Upload).filter(Upload.upload_batch == batch_id).update({Upload.http_status: resp.status_code})
+
+        session.commit()
+
 def enque_event(session, event_names):
     from watcher.video import task_save_significant_frame
 
@@ -235,7 +275,7 @@ def main():
         elif args.action == 'update_dirs':
             update_video_directory(session)
         elif args.action == 'syncup':
-            sync_to_remote(session)
+            batch_sync_to_remote(session)
         elif args.action == 'enque':
             enque_event(session, args.sub_args)
         elif args.action == 'failed':
