@@ -206,7 +206,7 @@ def batch_sync_to_remote(session):
                     file_relpath = str(Path(o.result_file_location) / o.result_file)
                     multipart[f"img_file_{i}"] = (file_relpath, open(o.result_file_fullpath(), 'rb'), 'image/jpeg')
 
-                u = Upload().record(o, batch_id)
+                u = Upload(object=o, upload_batch=batch_id)
                 session.add(u)
 
                 i += 1

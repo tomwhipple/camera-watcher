@@ -140,7 +140,7 @@ def create_motion_event():
     with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(tc)
 
-        new_motion = MotionEvent(input_dict)
+        new_motion = MotionEvent(**input_dict)
 
         session.add(new_motion)
         session.commit()
@@ -160,7 +160,7 @@ def create_event_observation():
     with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(tc)
 
-        new_observation = EventObservation(request.json)
+        new_observation = EventObservation(**request.json)
 
         try:
             session.add(new_observation)
@@ -185,7 +185,6 @@ def create_event_observation():
                 msg = "Data Integrity check failed. Ensure you're not reusing file or event names"
                 app.logger.error(msg)
                 response_body = jsonify({"error": msg})
-
 
         return response_body, response_code
 

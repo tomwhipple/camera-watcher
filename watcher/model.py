@@ -64,22 +64,14 @@ class Upload(Base):
     http_status = Column(Integer)
     upload_batch = Column(String)
 
-    def __init__(self, input=None):
-        if input:
-            event = input.get('event')
-            self.sync_at = input.get('sync_at', datetime.now(timezone.utc))
-            self.object_id = event.id
-            self.object_class = type(event).__name__
-            self.http_status = input.get('http_status')
-
-    def record(self, object, batch_id=None):
-        self.object_class = type(object).__name__
-        self.object_id = object.id
-        self.upload_batch = batch_id
-
+    def __init__(self, **input):
+        self.__dict__.update(input)
         self.sync_at = datetime.now(timezone.utc)
 
-        return self
+        event = input.get('event') or input.get('object')
+        if event:
+            self.object_id = event.id
+            self.object_class = type(event).__name__
 
 class Computation(Base):
     __tablename__ = 'computations'
@@ -137,23 +129,6 @@ class MotionEvent(Base):
 
     event_name = Column(String)
 
-    # observation = relationship("EventObservation",)
-
-    ## Note: x & y are the _center_ of the box.
-
-    def __init__(self, dict):
-        self.event_name = dict.get('event_name')
-
-        self.frame = dict.get('frame')
-        self.x = dict.get('x')
-        self.y = dict.get('y')
-        self.width = dict.get('width')
-        self.height = dict.get('height')
-        self.pixels = dict.get('pixels')
-        self.label_count = dict.get('label_count')
-
-        self.observation = dict.get('observation')
-
     def api_response_dict(self):
         return {
             'motion_event_id': self.id,
@@ -196,7 +171,9 @@ class EventObservation(Base):
     #motions = relationship("MotionEvent", back_populates='observation')
     # motions = relationship("MotionEvent", primaryjoin=lambda: EventObservation.event_name == MotionEvent.event_name)
 
-    def __init__(self, input):
+    def __init__(self, **input):
+        self.__dict__.update(input)
+
         # we want to be sure we're not caching timezone offsets inadvertently
         camera_timezone = datetime.now().astimezone().tzinfo
         if config['location'].get('TIMEZONE'):
@@ -218,10 +195,7 @@ class EventObservation(Base):
         timestr = input.get('capture_time', datetime.now().isoformat())
         self.capture_time = datetime.fromisoformat(timestr).astimezone(camera_timezone)
         self.scene_name = input.get('scene_name',"")
-
         self.event_name = input.get('event_name',"")
-        self.threshold = input.get('threshold')
-        self.noise_level = input.get('noise_level')
 
         lat=config['location'].get('LATITUDE')
         lng=config['location'].get('LONGITUDE') 

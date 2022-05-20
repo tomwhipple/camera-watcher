@@ -15,7 +15,7 @@ def task_write_image(img, img_relpath):
     print(f"wrote {fullpath}")
 
 def task_record_event(event_class, input_json_str):
-    allowed_classes = ['EventObservation', 'MotionEvent']
+    allowed_classes = ['EventObservation', 'MotionEvent', 'Computation']
 
     if event_class not in allowed_classes:
         print(f"unknown event_class {event_class}. ignoring.")
@@ -32,7 +32,7 @@ def task_record_event(event_class, input_json_str):
 
     with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(tc)
-        new_event = eventClass(input_dict)
+        new_event = eventClass(**input_dict)
 
         try:
             session.add(new_event)
