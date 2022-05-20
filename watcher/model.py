@@ -129,7 +129,6 @@ class MotionEvent(Base):
 
     event_name = Column(String)
 
-    # hack
     capture_time = None
 
     def api_response_dict(self):

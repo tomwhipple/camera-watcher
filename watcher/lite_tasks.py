@@ -10,8 +10,11 @@ __all__ = ['task_write_image','task_record_event']
 
 def task_write_image(img, img_relpath):
     basedir = Path(application_config('system','BASE_DIR'))
-    fullpath = str(basedir / img_relpath)
-    img.save(fullpath, quality=85)
+    fullpath = basedir / img_relpath
+
+    fullpath.parent.mkdir(parents=True, exist_ok=True)
+
+    img.save(str(fullpath), quality=85)
     print(f"wrote {fullpath}")
 
 def task_record_event(event_class, input_json_str):
@@ -22,6 +25,7 @@ def task_record_event(event_class, input_json_str):
         return
 
     input_dict = json.loads(input_json_str)
+    input_dict.pop('id', None)
 
     filetype = input_dict.get('filetype')
     if filetype and int(filetype) != 8:

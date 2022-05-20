@@ -10,10 +10,11 @@ from flask import *
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import InternalServerError, BadRequest
 from rq import Queue, Retry
+from PIL import Image
 
 from watcher.model import *
 from watcher.connection import *
-from watcher.lite_tasks import task_record_event
+from watcher.lite_tasks import task_record_event, task_write_image
 
 query_uncategorized_sql = """select * 
 from event_observations obs 
@@ -76,13 +77,18 @@ def test_database():
 @auth.login_required
 def recieve_batch():
     queue = Queue('record_event', connection = redis_connection())
+    imgque = Queue('write_image', connection = redis_connection())
 
     for k in request.form.keys():
         c, __ = k.split('_')
-
         j = request.form[k]
-
         queue.enqueue(task_record_event,args=(c, j))
+
+    for f in request.files.keys():
+        file = request.files[f]
+        img = Image.open(file)
+
+        imgque.enqueue(task_write_image, args=(img, file.filename))
 
     return 'ACCEPTED', 202
 
