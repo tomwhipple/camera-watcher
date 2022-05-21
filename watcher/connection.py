@@ -17,9 +17,6 @@ __all__ = ['TunneledConnection','application_config','redis_connection']
 def redis_connection():
     return redis.Redis(host=application_config('system','REDIS_HOST'))
 
-# def redis_queue():
-#     return Queue(connection=redis_connection())
-
 def application_config(section_name=None, config_variable=None):
     parser = configparser.ConfigParser()
 
@@ -109,10 +106,16 @@ class TunneledConnection(object):
         self.engine = None
         self.connection = None
 
+        self.count = 0
+
     def __enter__(self):
         return self.connect()
 
     def connect(self):
+        self.count += 1
+        if self.connection:
+            return self.connection
+
         if self.tunnel:
             self.tunnel.start()
             self.config['db_host'] = self.tunnel.local_bind_address[0]
@@ -129,9 +132,17 @@ class TunneledConnection(object):
         return self.connection
 
     def __exit__(self, *args):
+        self.disconnect()
+
+    def disconnect(self):
+        self.count -= 1
+        if self.count > 0:
+            return
+
         self.connection.close()
         if self.tunnel:
             self.tunnel.close()
+        self.connection = None
 
 def get_config_val(cfg, key, default=None):
     return cfg.get(key) or os.environ.get(key) or default
