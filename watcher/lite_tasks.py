@@ -3,10 +3,14 @@ import sqlalchemy
 from pathlib import Path
 from PIL import Image
 
-from .connection import application_config, TunneledConnection
+from rq import Connection, Worker
+
+from .connection import application_config, TunneledConnection, redis_connection
 from .model import *
 
-__all__ = ['task_write_image','task_record_event']
+__all__ = ['task_write_image','task_record_event', 'run_io_queues']
+
+connection = TunneledConnection()
 
 def task_write_image(img, img_relpath):
     basedir = Path(application_config('system','BASE_DIR'))
@@ -18,6 +22,8 @@ def task_write_image(img, img_relpath):
     print(f"wrote {fullpath}")
 
 def task_record_event(event_class, input_json_str):
+    global connection
+
     allowed_classes = ['EventObservation', 'MotionEvent', 'Computation']
 
     if event_class not in allowed_classes:
@@ -34,8 +40,8 @@ def task_record_event(event_class, input_json_str):
 
     eventClass = globals()[event_class]
 
-    with TunneledConnection() as tc:
-        session = sqlalchemy.orm.Session(tc)
+    with connection:
+        session = sqlalchemy.orm.Session(connection)
         new_event = eventClass(**input_dict)
 
         try:
@@ -47,3 +53,9 @@ def task_record_event(event_class, input_json_str):
             session.rollback()
 
             print(f"ignoring duplicate database entry: {ie._message} ({ie._sql_message}")       
+
+def run_io_queues(queues = ['record_event', 'write_image']):
+
+    with connection:
+        worker = Worker(queues, connection=redis_connection())
+        worker.work()

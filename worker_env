@@ -5,4 +5,4 @@ export WATCHER_CONFIG=`pwd`/application.cfg
 # work around a bug on OSX.
 export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 
-. pyenv-watcher/bin/activate
+[ -d "pyenv-watcher" ] && source pyenv-watcher/bin/activate

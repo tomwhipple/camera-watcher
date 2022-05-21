@@ -25,6 +25,7 @@ import pytz
 from astral import LocationInfo
 
 from watcher import *
+from watcher.lite_tasks import run_io_queues
 from hardswitch import NetworkPowerSwitch
 
 config = application_config()
@@ -246,7 +247,7 @@ def show_failed(sub_args=None):
 
 def main():
     parser = argparse.ArgumentParser(description='Utilites for watcher')
-    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user', 'update_lighting', 'update_dirs', 'syncup','enque','failed'])
+    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user', 'update_lighting', 'update_dirs', 'syncup','enque','failed','ioworker'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
     parser.add_argument('-l', '--limit', type=int)
@@ -280,6 +281,8 @@ def main():
             enque_event(session, args.sub_args)
         elif args.action == 'failed':
             show_failed(args.sub_args)
+        elif args.action == 'ioworker':
+            run_io_queues()
         else:
             print("No action specified.")
 
