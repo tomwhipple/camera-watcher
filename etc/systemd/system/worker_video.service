@@ -11,7 +11,7 @@ Type=simple
 Restart=always
 TimeoutSec=5
 RestartSec=10
-ExecStart=/home/pi/camera-watcher/pyenv-watcher/bin/rq worker -u redis://192.168.0.2 -s video default
+ExecStart=/home/pi/camera-watcher/pyenv-watcher/bin/rq worker -s video default
 Environment=WATCHER_CONFIG=/home/pi/camera-watcher/application.cfg
 WorkingDirectory=/home/pi/camera-watcher
 

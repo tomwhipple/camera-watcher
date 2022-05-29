@@ -9,7 +9,7 @@ After=Network.target
 [Service]
 Type=simple
 Restart=always
-ExecStart=/usr/local/bin/motion
+ExecStart=/bin/bash -c "PATH=/home/pi/camera-watcher/pyenv-watcher/bin:$PATH exec /usr/local/bin/motion"
 
 User=motion
 Group=video
