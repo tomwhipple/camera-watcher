@@ -22,7 +22,7 @@ from .lite_tasks import *
 __all__ = ['EventVideo','task_save_significant_frame']
 
 NUM_INITAL_FRAMES_TO_AVERAGE = 5
-MAX_FRAMES_PER_CHUNK = 100
+DEFAULT_MAX_FRAMES_PER_CHUNK = 100
 
 shared_tunnel = None
 def get_shared_tunnel():
@@ -100,7 +100,7 @@ class EventVideo(object):
         if not self.most_significant_frame_idx:
             thresh_sums = []
 
-            chunk_size = MAX_FRAMES_PER_CHUNK
+            chunk_size = int(application_config('video', 'MAX_FRAMES_PER_CHUNK') or DEFAULT_MAX_FRAMES_PER_CHUNK)
             avg = (np.mean(self.frames[0:NUM_INITAL_FRAMES_TO_AVERAGE,:,:,:], axis=0, dtype=np.float32))
 
             for i in range(0, math.ceil(self.num_frames/chunk_size)):

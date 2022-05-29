@@ -34,7 +34,7 @@ def application_config(section_name=None, config_variable=None):
     if section_name:
         cfg = parser[section_name]
         if config_variable:
-            return cfg.get(config_variable)
+            return cfg.get(config_variable, None)
     else:
         cfg = parser
 
