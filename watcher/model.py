@@ -112,7 +112,7 @@ class Computation(Base):
 select *
 from computations c
 where id not in (select distinct object_id from uploads where object_class = 'Computation' and http_status < 400)
-order by c.computed_at desc limit 5
+order by c.computed_at desc
 """)
 
 class MotionEvent(Base):
@@ -252,7 +252,7 @@ class EventObservation(Base):
 select *
 from event_observations eo
 where id not in (select distinct object_id from uploads where object_class = 'EventObservation' and http_status < 400)
-order by eo.capture_time desc limit 5
+order by eo.capture_time desc
 """)
 
 def sunlight_from_time_for_location(timestamp, location):
