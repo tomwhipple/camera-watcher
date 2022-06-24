@@ -115,4 +115,6 @@ ALTER TABLE uploads
 	CHANGE COLUMN result_code http_status SMALLINT,
 	ADD COLUMN upload_batch VARCHAR(40)
 ;
-	
+
+ALTER TABLE motion_events
+	ADD COLUMN IF NOT EXISTS source VARCHAR(20);

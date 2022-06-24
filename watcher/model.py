@@ -128,6 +128,9 @@ class MotionEvent(Base):
     label_count = Column(Integer)
 
     event_name = Column(String)
+    source = Column(String)
+    source_version = Column(String)
+
 
     capture_time = None
 
