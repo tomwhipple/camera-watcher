@@ -131,8 +131,12 @@ class MotionEvent(Base):
     source = Column(String)
     source_version = Column(String)
 
-
     capture_time = None
+
+    # observation = relationship("EventObservation",
+    #         foreign_keys=[event_name], 
+    #         primaryjoin=lambda: EventObservation.event_name == MotionEvent.event_name
+    #     )
 
     def api_response_dict(self):
         return {
@@ -173,8 +177,11 @@ class EventObservation(Base):
     lighting_type = Column(String)
 
     classifications = relationship("EventClassification", back_populates='observation')
-    #motions = relationship("MotionEvent", back_populates='observation')
-    # motions = relationship("MotionEvent", primaryjoin=lambda: EventObservation.event_name == MotionEvent.event_name)
+    motions = relationship("MotionEvent", 
+                            foreign_keys=[event_name], 
+                            primaryjoin=lambda: EventObservation.event_name == MotionEvent.event_name,
+                            uselist=True, 
+                            backref="observation")
 
     def __init__(self, **input):
         self.__dict__.update(input)
@@ -207,6 +214,12 @@ class EventObservation(Base):
 
         camera_location = LocationInfo(self.scene_name, None, camera_timezone, lat, lng)
         self.lighting_type = input.get('lighting_type',sunlight_from_time_for_location(self.capture_time, camera_location))
+
+    def boxes_for_frame(self, frame):
+        boxes = []
+        for m in self.motions:
+            if m.frame == frame: boxes.append(m.box())
+        return boxes
 
     def api_response_dict(self):
         return {

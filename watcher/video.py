@@ -76,6 +76,7 @@ class EventVideo(object):
         if not self.file or not os.access(self.file, os.R_OK):
             self.file = self.event.video_url()
 
+    def probe_file(self):
         try:
             info = ffmpeg.probe(self.file)
 
@@ -91,12 +92,14 @@ class EventVideo(object):
             raise e 
 
     def load_frames(self):
-        self.frames = fetch_video_from_file(self.file)
-
-    def bytes_needed(self):
-        return self.num_frames * self.height * self.width * 3
+        if not self.frames:
+            self.probe_file() 
+            self.frames = fetch_video_from_file(self.file)
 
     def most_significant_frame(self):
+        if not self.num_frames: 
+            self.probe_file()
+
         if not self.most_significant_frame_idx:
             thresh_sums = []
 
