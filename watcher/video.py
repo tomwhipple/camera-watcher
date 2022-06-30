@@ -46,6 +46,7 @@ class EventVideo(object):
     num_frames = 0
     width = 0
     height = 0
+    duration = None
 
     def get_tunnel(self):
         if not self.tunnel:
@@ -87,6 +88,7 @@ class EventVideo(object):
             self.width = int(video_info['width'])
             self.height = int (video_info['height'])
             self.num_frames = int(video_info['nb_frames'])
+            self.duration = float(video_info['duration'])
 
         except Exception as e:
             print(f"STDERR: {e.stderr}")
@@ -208,6 +210,7 @@ def task_save_significant_frame(name):
 
             result['most_significant_frame'] = sig_frame
             result['number_of_frames'] = num_frames
+            result['duration'] = vid.duration
 
             img_relpath = Path(vid.event.video_location) / f"{name}_f{sig_frame}.jpg"
             img = Image.fromarray(frame_img,mode='RGB')
