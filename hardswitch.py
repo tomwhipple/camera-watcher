@@ -6,8 +6,8 @@ import requests
 
 from time import time, sleep
 
-# This is built to wait for a Viasat internet modem to boot up, acquire signal and be ready to go. It takes a while.
-CONNECTION_TIMEOUT_MINUTES = 10
+# This is built to wait for a satallite to boot up, acquire signal and be ready to go. It takes a while.
+CONNECTION_TIMEOUT_MINUTES = 30
 
 PI_MODEL_FILE='/sys/firmware/devicetree/base/model'
 def is_raspi():
@@ -56,7 +56,7 @@ class NetworkPowerSwitch(object):
             except (requests.Timeout, requests.ConnectionError):
                 sleep(15)
 
-        raise NetworkPowerTimeoutException
+        raise Exception(f"Timed out waiting for netowkr connection to {self.check_url}")
 
     def __enter__(self):
         return self.enable()
