@@ -1,3 +1,5 @@
+
+
 import os
 import time
 import json
@@ -6,6 +8,7 @@ import math
 from pathlib import Path
 from rq import Queue, Retry
 
+import cv2 as cv
 import numpy as np
 from PIL import Image
 import ffmpeg
@@ -22,7 +25,7 @@ from .lite_tasks import *
 __all__ = ['EventVideo','task_save_significant_frame']
 
 NUM_INITAL_FRAMES_TO_AVERAGE = 5
-DEFAULT_MAX_FRAMES_PER_CHUNK = 100
+DEFAULT_MAX_FRAMES_PER_CHUNK = 50
 
 shared_tunnel = None
 def get_shared_tunnel():
@@ -97,6 +100,9 @@ class EventVideo(object):
             self.frames = fetch_video_from_file(self.file)
 
     def most_significant_frame(self):
+        if not self.frames:
+            self.load_frames()
+
         if not self.num_frames: 
             self.probe_file()
 
@@ -118,13 +124,60 @@ class EventVideo(object):
 
             self.most_significant_frame_idx = np.argmax(thresh_sums)
 
-        return self.most_significant_frame_idx
+        return int(self.most_significant_frame_idx)
+
+kern = np.ones((7,7))
+
+def find_background(cap, num_frames = NUM_INITAL_FRAMES_TO_AVERAGE):
+    i = 1
+    _, accum = cap.read()
+    buf = []
+    buf.append(accum)
+
+    while cap.isOpened() and i < num_frames:
+        _, frame = cap.read()
+        accum += frame
+        buf.append(frame)
+        i += 1
+
+    return np.median(buf, axis=0).astype(dtype=np.uint8), i
+
+def find_sigificant_frame(video_source):
+
+    cap = cv.VideoCapture(video_source,cv.CAP_FFMPEG)
+
+    sig_frame_num = 0
+    sig_frame_sum = 0
+    sig_frame = None
+
+    bg, f_num = find_background(cap)
+    while cap.isOpened():
+        capture_success, frame = cap.read()
+        if not capture_success or frame is None: continue
+
+        f_num += 1
+
+        diff = cv.absdiff(frame, bg)
+        gray_diff = cv.cvtColor(diff, cv.COLOR_BGR2GRAY)
+        blurred = cv.morphologyEx(gray_diff, cv.MORPH_CLOSE, kern)
+
+        _, thresh = cv.threshold(blurred, 128, 255, cv.THRESH_BINARY)
+
+        s = np.sum(thresh)
+        if s > sig_frame_sum:
+            sig_frame_sum = s
+            sig_frame_num = f_num
+            sig_frame = frame
+
+    return sig_frame_num, f_num, sig_frame
 
 def task_save_significant_frame(name):
     if isinstance(name, list):
         name = name[0]
     
     with TunneledConnection() as tc:
+
+        # HACK: rq does a terrible job ensuring jobs only run once. 
         result = {}
         session = sqlalchemy.orm.Session(tc)
 
@@ -143,15 +196,21 @@ def task_save_significant_frame(name):
 
             vid = EventVideo(name=name, session=session)
 
-            vid.load_frames()
+            print(f"starting video analysis for {name} at {vid.file}")
 
-            print(f"starting video analysis for {name}")
-            f = vid.most_significant_frame()
-            result['most_significant_frame'] = int(f)
-            result['number_of_frames'] = vid.num_frames
+            #option 1 - frame by frame.
+            #sig_frame, num_frames, frame_img = find_sigificant_frame(str(vid.file))
 
-            img_relpath = Path(vid.event.video_location) / f"{name}_f{f}.jpg"
-            img = Image.fromarray(vid.frames[f,:,:,:],mode='RGB')
+            #option 2 - read frames with ffmpeg, then work on them
+            sig_frame = vid.most_significant_frame()
+            num_frames = vid.num_frames
+            frame_img = vid.frames[sig_frame,:,:,:]
+
+            result['most_significant_frame'] = sig_frame
+            result['number_of_frames'] = num_frames
+
+            img_relpath = Path(vid.event.video_location) / f"{name}_f{sig_frame}.jpg"
+            img = Image.fromarray(frame_img,mode='RGB')
 
             comp.result_file = img_relpath.name
             comp.result_file_location = img_relpath.parent
@@ -172,6 +231,4 @@ def task_save_significant_frame(name):
             session.add(comp)
             session.commit()
 
-        print(f"found frame {f} for {name}. Will store as {img_relpath}")
-
-
+        print(f"found frame {sig_frame} for {name}. Will store as {img_relpath}")
