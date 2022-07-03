@@ -3,6 +3,7 @@ import os, sys
 
 import configparser
 import requests
+import logging
 
 from time import time, sleep
 
@@ -24,7 +25,11 @@ if is_raspi():
     from gpiozero import LED
 
 class NetworkPowerSwitch(object):
+    logger = None
+
     def __init__(self):
+        self.logger = logging.getLogger()
+
         config = configparser.ConfigParser()
         config.read(os.path.join(sys.path[0],'application.cfg'))
 
@@ -34,7 +39,7 @@ class NetworkPowerSwitch(object):
             if is_raspi() and pin >= 0:
                 self.relay = LED(pin)
 
-        self.check_url = config.get('remote','SYNC_APP_URL',fallback='http://www.tomwhipple.com') + '/'
+        self.check_url = config.get('remote','SYNC_APP_URL', fallback='http://www.tomwhipple.com') + '/'
 
     def enable(self):
         if self.relay:
@@ -47,16 +52,20 @@ class NetworkPowerSwitch(object):
         while time() - begin_time < CONNECTION_TIMEOUT_MINUTES * 60:
             try:
                 resp = netsession.head(self.check_url)
+                self.logger.debug(f"got {resp.status_code} from {self.check_url} ")
                 if resp.status_code > 0:
                     resp.close()
                     return
                 else:
-                    print(f"Some non-OK response was recieved: {resp}")
+                    msg = f"{resp.status_code} (not OK) response was recieved: {resp}"
+                    print(msg)
+                    self.logger.error(msg)
 
-            except (requests.Timeout, requests.ConnectionError):
+            except (requests.Timeout, requests.ConnectionError) as e:
+                self.logger.debug(f"got a {str(e)} - waiting to try again")
                 sleep(15)
 
-        raise Exception(f"Timed out waiting for netowkr connection to {self.check_url}")
+        raise Exception(f"Timed out waiting for network connection to {self.check_url}")
 
     def __enter__(self):
         return self.enable()

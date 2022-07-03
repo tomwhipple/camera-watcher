@@ -7,6 +7,7 @@ import pathlib
 import os
 import configparser
 import requests
+import logging
 
 from datetime import datetime
 from pathlib import PurePath, Path
@@ -29,6 +30,7 @@ from watcher.lite_tasks import run_io_queues
 from hardswitch import NetworkPowerSwitch
 
 config = application_config()
+logger = logging.getLogger()
 
 DEFAULT_WORKING_DIR = PurePath(config['system']['BASE_DIR']) / 'wellerDriveway/capture'
 
@@ -190,6 +192,8 @@ def batch_sync_to_remote(session):
     sync_url = config['remote']['SYNC_APP_URL'] + "/batch"
     sync_auth = (config['remote']['SYNC_USER'], config['remote']['SYNC_PASS'])
 
+    logger.info(f"Beginning batch sync to f{sync_url}")
+
     with NetworkPowerSwitch() as nps:
         batch_id = uuid1()
         multipart = {}
@@ -197,7 +201,8 @@ def batch_sync_to_remote(session):
         for cls_str in ['EventObservation', 'Computation']:
             c = globals()[cls_str]
 
-            objects = session.query(c).from_statement(c.sync_select()).all()        
+            objects = session.query(c).from_statement(c.sync_select()).all()
+            logger.info(f"found {len(c)} objects of type f{cls_str} to upload")    
 
             i = 0
             for o in objects:
@@ -215,13 +220,16 @@ def batch_sync_to_remote(session):
         m = MultipartEncoder(fields=multipart)
         resp = requests.post(sync_url, data=m, headers={'Content-Type': m.content_type}, auth=sync_auth)
         if resp.status_code == 401:
-            print(f"Invalid credentials for {sync_auth}")
+            msg = f"Invalid credentials for {sync_auth}"
+            print(msg)
+            logger.error(msg)
             session.rollback()
             return
         else:
             session.query(Upload).filter(Upload.upload_batch == batch_id).update({Upload.http_status: resp.status_code})
 
         session.commit()
+        logger.info("upload complete")
 
 def enque_event(session, event_names):
     from watcher.video import task_save_significant_frame
@@ -256,6 +264,7 @@ def main():
     parser.add_argument('sub_args', nargs='*')
 
     args = parser.parse_args()
+    logger.setLevel('DEBUG')
 
     with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(tc)
