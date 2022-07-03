@@ -202,13 +202,13 @@ def batch_sync_to_remote(session):
             c = globals()[cls_str]
 
             objects = session.query(c).from_statement(c.sync_select()).all()
-            logger.info(f"found {len(c)} objects of type f{cls_str} to upload")    
+            logger.info(f"found {len(objects)} objects of type f{cls_str} to upload")    
 
             i = 0
             for o in objects:
                 multipart[f"{cls_str}_{i}"] = json.dumps(o, cls=JSONEncoder)
 
-                if cls_str == 'Computation' and o.result_file_fullpath():
+                if cls_str == 'Computation' and o.result_file_fullpath() is not None and o.result_file_fullpath().exists():
                     file_relpath = str(Path(o.result_file_location) / o.result_file)
                     multipart[f"img_file_{i}"] = (file_relpath, open(o.result_file_fullpath(), 'rb'), 'image/jpeg')
 
@@ -264,7 +264,10 @@ def main():
     parser.add_argument('sub_args', nargs='*')
 
     args = parser.parse_args()
-    logger.setLevel('DEBUG')
+    logger = logging.getLogger(__name__)
+    logger.setLevel("DEBUG")
+    logger.addHandler(logging.StreamHandler(stream=sys.stdout))
+    logger.addHandler(logging.FileHandler('watchutil.log'))
 
     with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(tc)

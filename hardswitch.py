@@ -28,7 +28,7 @@ class NetworkPowerSwitch(object):
     logger = None
 
     def __init__(self):
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger(__name__)
 
         config = configparser.ConfigParser()
         config.read(os.path.join(sys.path[0],'application.cfg'))
