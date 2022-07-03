@@ -11,6 +11,9 @@ from time import time, sleep
 CONNECTION_TIMEOUT_MINUTES = 30
 
 PI_MODEL_FILE='/sys/firmware/devicetree/base/model'
+
+logger = logging.getLogger(sys.argv[0])
+
 def is_raspi():
     if not os.access(PI_MODEL_FILE, os.R_OK):
         return False
@@ -25,10 +28,9 @@ if is_raspi():
     from gpiozero import LED
 
 class NetworkPowerSwitch(object):
-    logger = None
 
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
+        self.logger = logger
 
         config = configparser.ConfigParser()
         config.read(os.path.join(sys.path[0],'application.cfg'))

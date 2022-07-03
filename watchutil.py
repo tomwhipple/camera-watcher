@@ -30,7 +30,7 @@ from watcher.lite_tasks import run_io_queues
 from hardswitch import NetworkPowerSwitch
 
 config = application_config()
-logger = logging.getLogger()
+logger = logging.getLogger(sys.argv[0])
 
 DEFAULT_WORKING_DIR = PurePath(config['system']['BASE_DIR']) / 'wellerDriveway/capture'
 
@@ -192,7 +192,7 @@ def batch_sync_to_remote(session):
     sync_url = config['remote']['SYNC_APP_URL'] + "/batch"
     sync_auth = (config['remote']['SYNC_USER'], config['remote']['SYNC_PASS'])
 
-    logger.info(f"Beginning batch sync to f{sync_url}")
+    logger.info(f"Beginning batch sync to {sync_url}")
 
     with NetworkPowerSwitch() as nps:
         batch_id = uuid1()
@@ -202,7 +202,7 @@ def batch_sync_to_remote(session):
             c = globals()[cls_str]
 
             objects = session.query(c).from_statement(c.sync_select()).all()
-            logger.info(f"found {len(objects)} objects of type f{cls_str} to upload")    
+            logger.info(f"found {len(objects)} objects of type {cls_str} to upload")    
 
             i = 0
             for o in objects:
@@ -264,10 +264,11 @@ def main():
     parser.add_argument('sub_args', nargs='*')
 
     args = parser.parse_args()
-    logger = logging.getLogger(__name__)
     logger.setLevel("DEBUG")
     logger.addHandler(logging.StreamHandler(stream=sys.stdout))
-    logger.addHandler(logging.FileHandler('watchutil.log'))
+    fileHandler = logging.FileHandler('watcher_util.log')
+    fileHandler.setFormatter(logging.Formatter(fmt="%(asctime)s %(message)s"))
+    logger.addHandler(fileHandler)
 
     with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(tc)
