@@ -219,17 +219,17 @@ def batch_sync_to_remote(session):
 
         m = MultipartEncoder(fields=multipart)
         resp = requests.post(sync_url, data=m, headers={'Content-Type': m.content_type}, auth=sync_auth)
+
+        session.query(Upload).filter(Upload.upload_batch == batch_id).update({Upload.http_status: resp.status_code})
         if resp.status_code == 401:
             msg = f"Invalid credentials for {sync_auth}"
             print(msg)
             logger.error(msg)
             session.rollback()
             return
-        else:
-            session.query(Upload).filter(Upload.upload_batch == batch_id).update({Upload.http_status: resp.status_code})
 
         session.commit()
-        logger.info("upload complete")
+        logger.info(f"{resp.status_code} upload complete")
 
 def enque_event(session, event_names):
     from watcher.video import task_save_significant_frame

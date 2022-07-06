@@ -30,8 +30,6 @@ if is_raspi():
 class NetworkPowerSwitch(object):
 
     def __init__(self):
-        self.logger = logger
-
         config = configparser.ConfigParser()
         config.read(os.path.join(sys.path[0],'application.cfg'))
 
@@ -45,6 +43,7 @@ class NetworkPowerSwitch(object):
 
     def enable(self):
         if self.relay:
+            logger.debug("enabling relay")
             self.relay.on()
             sleep(1)
 
@@ -54,24 +53,27 @@ class NetworkPowerSwitch(object):
         while time() - begin_time < CONNECTION_TIMEOUT_MINUTES * 60:
             try:
                 resp = netsession.head(self.check_url)
-                self.logger.debug(f"got {resp.status_code} from {self.check_url} ")
+                logger.debug(f"got {resp.status_code} from {self.check_url} ")
                 if resp.status_code > 0:
                     resp.close()
                     return
                 else:
                     msg = f"{resp.status_code} (not OK) response was recieved: {resp}"
                     print(msg)
-                    self.logger.error(msg)
+                    logger.error(msg)
 
             except (requests.Timeout, requests.ConnectionError) as e:
-                self.logger.debug(f"got a {str(e)} - waiting to try again")
+                logger.debug(f"got a {str(e)} - waiting to try again")
                 sleep(15)
 
-        raise Exception(f"Timed out waiting for network connection to {self.check_url}")
+        msg = f"Timed out waiting for network connection to {self.check_url}"
+        logger.error(msg)
+        raise Exception(msg)
 
     def __enter__(self):
         return self.enable()
 
     def __exit__(self, *args):
         if self.relay:
+            logger.debug("disabling relay")
             self.relay.off()
