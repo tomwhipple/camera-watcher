@@ -5,10 +5,19 @@
  *      Author: tw
  */
 
+#include <time.h>
+
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <tuple>
+#include <list>
+
+// are these needed??
+#include <functional>
+#include <unordered_map>
+#include <utility>
 
 #include <opencv2/videoio.hpp>
 #include <opencv2/imgproc.hpp>
@@ -24,8 +33,34 @@ using namespace std;
 using namespace cv;
 
 #define NUM_BG_FRAMES 10
+#define MAX_BG_SECONDS 45
 
-/*
+#define GREEN Scalar(0, 255,0)
+#define WHITE Scalar(255,255,255)
+
+const int scale = 2;
+
+bool filterRect(Rect* r) {
+	return (
+		r->area() > 100/scale &&
+		r->y > 40/scale
+	);
+}
+
+void growRect(Rect* r) {
+	const int gf = 2;
+	r->x -= gf;
+	r->y -= gf;
+	r->height += 2*gf;
+	r->width += 2*gf;
+}
+
+//void mergeRects(cv::GArray in, cv::GArray out) {
+//
+//}
+
+// example from https://github.com/opencv/opencv/issues/21524
+
 namespace custom {
 
   G_API_OP(ToBoundingRects, <cv::GArray<cv::Rect>(cv::GArray<cv::GArray<cv::Point>>)>, "custom.fd_ToBoundingRects") {
@@ -40,19 +75,21 @@ namespace custom {
 
 
   GAPI_OCV_KERNEL(OCVToBoundingRects, ToBoundingRects) {
-    static void run(const std::vector<std::vector<cv::Point2i>> &in_contours,
+    static void run(const std::vector<std::vector<cv::Point>> &in_contours,
                     std::vector<cv::Rect> &out_boundingRects) {
       out_boundingRects.clear();
       cv::Rect br;
       for (auto c : in_contours) {
-        br = cv::gapi::boundingRect(c);
-        out_boundingRects.push_back(br);
+        br = cv::boundingRect(c);
+        if ( filterRect(&br) ) {
+        	growRect(&br);
+        	out_boundingRects.push_back(br);
+        }
       }
     }
   };
 
 } // namespace custom
-*/
 
 GComputation createDetectionGraph() {
 	// set up main computation
@@ -64,12 +101,40 @@ GComputation createDetectionGraph() {
 	GMat gray_diff = gapi::BGR2Gray(diff);
 	GMat blurred = gapi::morphologyEx(gray_diff, MORPH_CLOSE, kernel);
 	GMat thresh = gapi::threshold(blurred, 128, 255, THRESH_BINARY);
-	GArray<GArray<cv::Point>> contours = gapi::findContours(thresh, RETR_LIST, CHAIN_APPROX_NONE);
+	GArray<GArray<cv::Point>> contours = gapi::findContours(thresh,RETR_EXTERNAL, CHAIN_APPROX_NONE);
+	GArray<cv::Rect> boundingRects = custom::ToBoundingRects::on(contours);
 
-	return GComputation (cv::GIn(in, bg), cv::GOut(thresh, contours));
+	return GComputation (cv::GIn(in, bg), cv::GOut(thresh, contours, boundingRects));
+}
+
+
+void showDebugImage(Mat image, vector<Rect> boxes, int scale = 1) {
+	auto frameHeight = image.size().height;
+
+	for (auto b : boxes) {
+		auto sc_b = Rect(b.x * scale, b.y * scale, b.width * scale, b.height * scale);
+		rectangle(image, sc_b, GREEN, 1);
+	}
+	stringstream msg;
+	msg << "Found " << boxes.size() << " objects";
+	putText(image, msg.str(), Point(5,frameHeight - 5), FONT_HERSHEY_SIMPLEX, 0.75 , WHITE);
+
+	imshow("Video detections", image);
+}
+
+void getMeanBackground(list<Mat>* buffer, Mat* mean_bg) {
+	Mat bg_accum = Mat::zeros(buffer->front().size(), CV_32FC3);
+	for (auto f : *buffer) {
+		bg_accum += f;
+	}
+	bg_accum /= buffer->size();
+	bg_accum.convertTo(*mean_bg, CV_8UC3);
 }
 
 int main(int argc, char *argv[]) {
+	time_t now;
+	time(&now);
+	time_t bg_captured_at = 0;
 
 	VideoCapture cap;
 	if (argc > 1) {
@@ -81,39 +146,38 @@ int main(int argc, char *argv[]) {
 	Mat frame;
 	cap.read(frame); // just for size info
 
-	Mat work_frame;
-
-	Mat bg_accum;
-	Mat mean_bg;
-	bool has_initial_bg = false;
-	int has_bg_frames = 0;
+	auto work_frame = Mat();
+	auto frame_buffer = list<Mat>();
+	auto background = Mat();
 
 	vector<vector<cv::Point>> contours_out;
 	Mat display_out;
+	vector<cv::Rect> boxes_out;
+
+	cv::gapi::GKernelPackage kernels = cv::gapi::kernels<custom::OCVToBoundingRects>();
 
 	auto motionContours = createDetectionGraph();
+	cout << "starting at " << now << endl;
+	while (cap.isOpened() && waitKey(30) < 0 && cap.read(frame))  {
+		time(&now);
 
-	while (cap.isOpened() && waitKey(30) < 0)  {
-		cap.read(frame);
-		pyrDown(frame, work_frame, Size(frame.cols/2, frame.rows/2));
+		pyrDown(frame, work_frame, Size(frame.cols/scale, frame.rows/scale));
+		if (work_frame.size().area() > 0) frame_buffer.push_back(work_frame);
 
-		if (has_bg_frames < NUM_BG_FRAMES) {
-			if (has_bg_frames == 0) {
-				bg_accum = Mat::zeros(work_frame.size(), CV_32FC3);
-			}
-
-			bg_accum += work_frame;
-			has_bg_frames += 1;
+		if (difftime(now, bg_captured_at) > MAX_BG_SECONDS && frame_buffer.size() >= NUM_BG_FRAMES) {
+			time(&bg_captured_at);
+			getMeanBackground(&frame_buffer, &background);
+			cout << "captured background at " << asctime(localtime(&now)) << endl;
 		}
-		if (has_bg_frames == NUM_BG_FRAMES) {
-			mean_bg = bg_accum / has_bg_frames;
-			mean_bg.convertTo(mean_bg, CV_8UC3);
-			has_initial_bg = true;
-		}
-		if (has_initial_bg) {
-			motionContours.apply(cv::gin(work_frame, mean_bg), cv::gout(display_out, contours_out));
-			imshow("output", display_out);
+
+		if (frame_buffer.size() >= NUM_BG_FRAMES) {
+			motionContours.apply(cv::gin(work_frame, background), cv::gout(display_out, contours_out, boxes_out),cv::compile_args(kernels));
+			showDebugImage(frame, boxes_out, scale);
+			imshow("background", background);
+
+			frame_buffer.pop_front();
 		}
 
 	}
+	cout << "done!\n";
 }
