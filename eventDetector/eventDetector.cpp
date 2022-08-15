@@ -13,6 +13,7 @@
 #include <vector>
 #include <tuple>
 #include <list>
+#include <algorithm>
 
 // are these needed??
 #include <functional>
@@ -34,6 +35,8 @@ using namespace cv;
 
 #define NUM_BG_FRAMES 10
 #define MAX_BG_SECONDS 45
+#define BG_THRESHOLD 125
+#define RECT_GROW_FACTOR 3
 
 #define GREEN Scalar(0, 255,0)
 #define WHITE Scalar(255,255,255)
@@ -42,22 +45,71 @@ const int scale = 2;
 
 bool filterRect(Rect* r) {
 	return (
-		r->area() > 100/scale &&
+//		r->area() > 100/scale &&
 		r->y > 40/scale
 	);
 }
 
-void growRect(Rect* r) {
-	const int gf = 2;
+inline void growRect(Rect* r) {
+	const int gf = RECT_GROW_FACTOR;
 	r->x -= gf;
 	r->y -= gf;
 	r->height += 2*gf;
 	r->width += 2*gf;
 }
 
-//void mergeRects(cv::GArray in, cv::GArray out) {
-//
-//}
+inline bool inInterval(int begin, int test, int end) {
+	return (begin <= test && test <= end);
+}
+inline bool isRectOverlap(Rect r1, Rect r2) {
+//	return (r1.x <= r2.x <= r1.x + r1.width)
+//		&& (r1.y <= r2.y <= r1.y + r1.height
+//			|| r1.y <= r2.y + r2.height <= r1.y + r2.height
+//			|| r2.y <= r1.y <= r2.y + r2.height
+//			|| r2.y <= r1.y + r1.height <= r2.y + r2.height);
+	return (inInterval(r1.x, r2.x, r1.x +r1.width)
+			&& (inInterval(r1.y, r2.y, r1.y + r1.height)
+				|| inInterval(r1.y, r2.y + r2.height, r1.y + r2.height)
+				|| inInterval(r2.y, r1.y, r2.y + r2.height)
+				|| inInterval(r2.y, r1.y + r1.height, r2.y + r2.height)
+			   )
+	);
+}
+
+inline Rect mergeOverlapping(Rect r1, Rect r2) {
+	Point p = Point(min(r1.x, r2.x), min(r1.y,r2.y));
+	Size s = Size(max(r1.x+r1.width, r2.x+r2.width) - p.x, max(r1.y+r1.height, r2.y+r2.height) - p.y);
+	return Rect(p, s);
+}
+
+inline bool compareRectByX(Rect r1, Rect r2) {
+	return (r1.x < r2.x);
+}
+
+void mergeBoxes(vector<Rect> &boxes) {
+	if (boxes.size() <= 1) {
+		return;
+	}
+
+	sort(boxes.begin(), boxes.end(), compareRectByX);
+
+	for (auto it1 = boxes.begin(); it1 != boxes.end(); ++it1) {
+		auto it2 = it1+1;
+		while (it2 != boxes.end()) {
+//			cout << "rect " << *it1 << " & " << *it2;
+			if (isRectOverlap(*it1, *it2)) {
+//				cout << " overlap";
+				*it1 = mergeOverlapping(*it1, *it2);
+				it2 = boxes.erase(it2);
+			}
+			else {
+//				cout << " distinct";
+				++it2;
+			}
+//			cout << endl;
+		}
+	}
+}
 
 // example from https://github.com/opencv/opencv/issues/21524
 
@@ -86,6 +138,7 @@ namespace custom {
         	out_boundingRects.push_back(br);
         }
       }
+      mergeBoxes(out_boundingRects);
     }
   };
 
@@ -100,7 +153,7 @@ GComputation createDetectionGraph() {
 	GMat diff = gapi::absDiff(in, bg);
 	GMat gray_diff = gapi::BGR2Gray(diff);
 	GMat blurred = gapi::morphologyEx(gray_diff, MORPH_CLOSE, kernel);
-	GMat thresh = gapi::threshold(blurred, 128, 255, THRESH_BINARY);
+	GMat thresh = gapi::threshold(blurred, BG_THRESHOLD, 255, THRESH_BINARY);
 	GArray<GArray<cv::Point>> contours = gapi::findContours(thresh,RETR_EXTERNAL, CHAIN_APPROX_NONE);
 	GArray<cv::Rect> boundingRects = custom::ToBoundingRects::on(contours);
 
@@ -131,7 +184,18 @@ void getMeanBackground(list<Mat>* buffer, Mat* mean_bg) {
 	bg_accum.convertTo(*mean_bg, CV_8UC3);
 }
 
+void testRelational() {
+	cout << ((1 <= 2 <= 3)?"true":"false") << endl;
+	cout << ((1 <= -2 <= 3)?"true":"false") << endl;
+	cout << ((1 <= 2 <= -3)?"true":"false") << endl;
+
+	cout << (inInterval(1, 2, 3)?"true":"false") << endl;
+	cout << (inInterval(1, -2, 3)?"true":"false") << endl;
+	cout << (inInterval(1, 2, -4)?"true":"false") << endl;
+}
+
 int main(int argc, char *argv[]) {
+
 	time_t now;
 	time(&now);
 	time_t bg_captured_at = 0;
@@ -173,8 +237,8 @@ int main(int argc, char *argv[]) {
 		if (frame_buffer.size() >= NUM_BG_FRAMES) {
 			motionContours.apply(cv::gin(work_frame, background), cv::gout(display_out, contours_out, boxes_out),cv::compile_args(kernels));
 			showDebugImage(frame, boxes_out, scale);
-			imshow("background", background);
-
+//			imshow("background", background);
+			imshow("threshold", display_out);
 			frame_buffer.pop_front();
 		}
 
