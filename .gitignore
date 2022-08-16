@@ -3,3 +3,4 @@ __pycache__
 application.cfg
 *.pem
 .ipynb_checkpoints
+pyenv-watcher

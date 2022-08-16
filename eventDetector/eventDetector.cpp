@@ -100,7 +100,7 @@ void mergeBoxes(vector<Rect> &boxes) {
 			if (isRectOverlap(*it1, *it2)) {
 //				cout << " overlap";
 				*it1 = mergeOverlapping(*it1, *it2);
-				it2 = boxes.erase(it2);
+				it2 = boxes.erase(it2); // @suppress("Invalid arguments")
 			}
 			else {
 //				cout << " distinct";

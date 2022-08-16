@@ -1,8 +1,17 @@
 # source this file prior to running redis worker
 
+export VENV_DIR=pyenv-watcher
+
 export WATCHER_CONFIG=`pwd`/application.cfg
 
 # work around a bug on OSX.
 export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 
-[ -d "pyenv-watcher" ] && source pyenv-watcher/bin/activate
+if [ ! -d "$VENV_DIR" ] ; then
+	echo "didn't find $VENV_DIR dir. creating it."
+	python3 -mpip $VENV_DIR
+	source pyenv-watcher/bin/activate
+	python3 -m pip install -r requirements.txt 
+else:
+	source pyenv-watcher/bin/activate
+fi
