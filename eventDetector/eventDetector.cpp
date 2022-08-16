@@ -184,16 +184,6 @@ void getMeanBackground(list<Mat>* buffer, Mat* mean_bg) {
 	bg_accum.convertTo(*mean_bg, CV_8UC3);
 }
 
-void testRelational() {
-	cout << ((1 <= 2 <= 3)?"true":"false") << endl;
-	cout << ((1 <= -2 <= 3)?"true":"false") << endl;
-	cout << ((1 <= 2 <= -3)?"true":"false") << endl;
-
-	cout << (inInterval(1, 2, 3)?"true":"false") << endl;
-	cout << (inInterval(1, -2, 3)?"true":"false") << endl;
-	cout << (inInterval(1, 2, -4)?"true":"false") << endl;
-}
-
 int main(int argc, char *argv[]) {
 
 	time_t now;
