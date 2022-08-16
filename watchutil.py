@@ -159,13 +159,30 @@ def update_video_directory(session):
             obs.storage_local = True
 
             count += 1
-            if count % 100:
+            if count % 100 == 0:
                 session.commit()
                 print(f"updated {count}")
         else:
             obs.storage_local = False
 
     print(f"upated {count} total file locations")
+
+
+def remove_night_videos(session): 
+    stmt = select(EventObservation).where(EventObservation.lighting_type == "night")
+    result = session.execute(stmt) 
+
+    count = 0
+    for obs in result.scalars():
+        os.remove(obs.file_path())
+        obs.storage_local = False
+
+        count += 1
+        if count % 100 == 0:
+            session.commit()
+            print(f"updated {count}")
+
+    print(f"removed {count} files")
 
 def sync_to_remote(session):
 
@@ -255,7 +272,7 @@ def show_failed(sub_args=None):
 
 def main():
     parser = argparse.ArgumentParser(description='Utilites for watcher')
-    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user', 'update_lighting', 'update_dirs', 'syncup','enque','failed','ioworker'])
+    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user', 'update_lighting', 'update_dirs', 'syncup','enque','failed','ioworker','rm_night_videos'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
     parser.add_argument('-l', '--limit', type=int)
@@ -296,6 +313,8 @@ def main():
             show_failed(args.sub_args)
         elif args.action == 'ioworker':
             run_io_queues()
+        elif args.action == 'rm_night_videos':
+            remove_night_videos(session)
         else:
             print("No action specified.")
 
