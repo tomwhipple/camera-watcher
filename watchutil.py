@@ -169,12 +169,13 @@ def update_video_directory(session):
 
 
 def remove_night_videos(session): 
-    stmt = select(EventObservation).where(EventObservation.lighting_type == "night")
+    stmt = select(EventObservation).where(EventObservation.lighting_type == "night").where(EventObservation.storage_local == True)
     result = session.execute(stmt) 
 
     count = 0
     for obs in result.scalars():
-        os.remove(obs.file_path())
+        if obs.file_path().is_file():
+            obs.file_path().unlink()
         obs.storage_local = False
 
         count += 1
