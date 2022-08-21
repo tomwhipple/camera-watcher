@@ -284,9 +284,9 @@ def main():
     args = parser.parse_args()
     logger.setLevel("DEBUG")
     logger.addHandler(logging.StreamHandler(stream=sys.stdout))
-    fileHandler = logging.FileHandler('watcher_util.log')
-    fileHandler.setFormatter(logging.Formatter(fmt="%(asctime)s %(message)s"))
-    logger.addHandler(fileHandler)
+    #fileHandler = logging.FileHandler('watcher_util.log')
+    #fileHandler.setFormatter(logging.Formatter(fmt="%(asctime)s %(message)s"))
+    #logger.addHandler(fileHandler)
 
     with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(tc)
