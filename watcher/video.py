@@ -84,11 +84,22 @@ class EventVideo(object):
         try:
             info = ffmpeg.probe(self.file)
 
+            tries_remaining = 3
+            while not 'streams' in info and tries_remaining > 0:
+                time.sleep(1)
+                info = ffmpeg.probe(self.file)
+                tries_remaining -= 1
+
             video_info = next(stream for stream in info['streams'] if stream['codec_type'] == 'video')
             self.width = int(video_info['width'])
             self.height = int (video_info['height'])
             self.num_frames = int(video_info['nb_frames'])
             self.duration = float(video_info['duration'])
+
+        except KeyError as ke:
+            print(str(ke))
+
+            raise ke
 
         except Exception as e:
             print(f"STDERR: {e.stderr}")
@@ -109,7 +120,7 @@ class EventVideo(object):
             self.probe_file()
 
         if not self.most_significant_frame_idx:
-            thresh_sums = []
+            thresh_sums = np.zeros(self.num_frames)
 
             chunk_size = int(application_config('video', 'MAX_FRAMES_PER_CHUNK') or DEFAULT_MAX_FRAMES_PER_CHUNK)
             avg = (np.mean(self.frames[0:NUM_INITAL_FRAMES_TO_AVERAGE,:,:,:], axis=0, dtype=np.float32))
@@ -122,7 +133,7 @@ class EventVideo(object):
                 norms = rescale(np.linalg.norm(L1_dist, axis=-1))
                 thresh = threshold_video(norms)
 
-                thresh_sums = np.append(thresh_sums, np.sum(thresh, axis=(1,2)))
+                thresh_sums[begin:end] = np.sum(thresh, axis=(1,2))
 
             self.most_significant_frame_idx = np.argmax(thresh_sums)
 
