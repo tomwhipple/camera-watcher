@@ -19,13 +19,13 @@ The install depends upon relatively generic installs Lighttpd, MariaDB and Redis
 Based on a fresh install May 5, 2022 of the arm64 image of RaspberryPi OS - Lite, the following should be run before anything else.
 
 ```
-$ sudo apt install autoconf automake autopoint pkgconf libtool build-essential libzip-dev gettext libmicrohttpd-dev libjpeg62-turbo-dev libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libavdevice-dev mariadb-server lighttpd redis ffmpeg python3-venv python3-opencv mariadb-client libmariadb-dev-compat python3-dev
+sudo apt install autoconf automake autopoint pkgconf libtool build-essential libzip-dev gettext libmicrohttpd-dev libjpeg62-turbo-dev libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libavdevice-dev mariadb-server lighttpd redis ffmpeg python3-venv python3-opencv mariadb-client libmariadb-dev-compat python3-dev
 ```
 
 After setting up a virtual environment, install python modules as
 
 ```
-$ python3 -m pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 ```
 
 ### Motion
