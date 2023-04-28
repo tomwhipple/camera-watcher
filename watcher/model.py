@@ -93,7 +93,10 @@ class Computation(Base):
         self.__dict__.update(kwargs)
 
         self.host_info = kwargs.get('host_info',json.dumps(platform.uname()))
-        self.git_version = kwargs.get('git_version',subprocess.check_output('git describe --always --dirty --tags'.split()).decode('utf-8').strip())
+        try:
+            self.git_version = kwargs.get('git_version',subprocess.check_output('git describe --always --dirty --tags'.split()).decode('utf-8').strip())
+        except Error as e:
+            print("Intercepted an error: ", e)
 
     def start_timer(self):
         self.computed_at = datetime.now(timezone.utc)
