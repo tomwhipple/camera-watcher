@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Enum, Boolean, Integer, text
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from passlib.hash import pbkdf2_sha256
 
@@ -27,7 +27,7 @@ import pytz
 
 from .connection import application_config
 
-__all__ = ['MotionEvent', 'EventObservation', 'EventClassification', 'APIUser', 'Upload', 'Computation', 'JSONEncoder']
+__all__ = ['MotionEvent', 'EventObservation', 'EventClassification', 'APIUser', 'Upload', 'Computation', 'JSONEncoder', 'Weather']
 
 config = application_config()
 
@@ -136,11 +136,6 @@ class MotionEvent(Base):
 
     capture_time = None
 
-    # observation = relationship("EventObservation",
-    #         foreign_keys=[event_name], 
-    #         primaryjoin=lambda: EventObservation.event_name == MotionEvent.event_name
-    #     )
-
     def api_response_dict(self):
         return {
             'motion_event_id': self.id,
@@ -160,6 +155,39 @@ class MotionEvent(Base):
             self.width,
             self.height
         )
+
+
+class Weather(Base):
+    __tablename__ = 'weather'
+    id: Mapped[int] = Column(BigInteger, primary_key=True)
+    valid_at = Column(DateTime)
+    valid_at_tz_offset_min = Column(Integer)
+    description = Column(String) 
+    temp_c = Column(Float)
+    feels_like_c = Column(Float)
+    temp_min_c = Column(Float)
+    temp_max_c = Column(Float)
+    pressure_hpa = Column(Integer)
+    visibility = Column(Integer)
+    humid_pct = Column(Integer)
+    wind_speed = Column(Float)
+    wind_dir = Column(Integer)
+    cloud_pct = Column(Integer)
+
+    def __init__(self, **input): 
+        self.description = input['weather'][0].get('description')
+        self.valid_at = datetime.fromtimestamp(input.get('dt'))
+        self.valid_at_tz_offset_min = input.get('timezone') / 60
+        self.temp_c = input['main'].get('temp')
+        self.feels_like_c = input['main'].get('feels_like')
+        self.temp_min_c = input['main'].get('temp_min')
+        self.temp_max_c = input['main'].get('temp_max')
+        self.pressure_hpa = input['main'].get('pressure')
+        self.humid_pct = input['main'].get('humidity')
+        self.visibility = input.get('visibility')
+        self.wind_speed = input['wind'].get('speed')
+        self.wind_dir = input['wind'].get('deg')
+        self.cloud_pct = input['clouds'].get('all')
 
 
 class EventObservation(Base):
@@ -185,6 +213,11 @@ class EventObservation(Base):
                             primaryjoin=lambda: EventObservation.event_name == MotionEvent.event_name,
                             uselist=True, 
                             backref="observation")
+
+    #weather = relationship("Weather", foreign_keys=[id], primaryjoin=lambda: EventObservation.weather_id == Weather.id) 
+    # weather_id : Mapped[int] = mapped_column(ForeignKey("weather.id"))
+    # weather: Mapped["Weather"]
+    weather_id = Column(BigInteger)
 
     def __init__(self, **input):
         self.__dict__.update(input)

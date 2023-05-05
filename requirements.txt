@@ -1,4 +1,4 @@
-sqlalchemy>=1.4.27
+sqlalchemy>=2.0.12
 mysqlclient>=2.1.0
 sshtunnel
 passlib>=1.7.4

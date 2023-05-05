@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 from astral import LocationInfo
-from watcher_model import sunlight_from_time_for_location
+from watcher.model import sunlight_from_time_for_location
 
 def test_sunlight():
 	austin = LocationInfo('austin', 'texas', 'US/Central', 30.443, -97.817)

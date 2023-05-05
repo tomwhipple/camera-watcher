@@ -119,3 +119,26 @@ ALTER TABLE uploads
 ALTER TABLE motion_events
 	ADD COLUMN IF NOT EXISTS source VARCHAR(20),
 	ADD COLUMN IF NOT EXISTS source_version VARCHAR(20);
+	
+
+CREATE TABLE IF NOT EXISTS weather (
+	id SERIAL PRIMARY KEY,
+	valid_at TIMESTAMP,
+	valid_at_tz_offset_min INT,
+	description TEXT,
+	temp_c FLOAT,
+	feels_like_c FLOAT,
+	temp_min_c FLOAT,
+	temp_max_c FLOAT,
+	visibility INT,
+	pressure_hpa INT,
+	humid_pct INT,
+	wind_speed FLOAT,
+	wind_dir INT,
+	cloud_pct INT
+);
+
+ALTER TABLE event_observations 
+	ADD COLUMN IF NOT EXISTS weather_id BIGINT UNSIGNED,
+	ADD FOREIGN KEY (weather_id) REFERENCES weather(id);
+	
