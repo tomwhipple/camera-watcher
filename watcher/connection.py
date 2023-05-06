@@ -76,7 +76,7 @@ def get_db_config():
             # [END cloud_sql_mysql_sqlalchemy_lifetime]
         },
 
-        'driver': 'mysql',
+        'driver': 'mysql+pymysql',
 
         'db_host': get_config_val(config,'DB_HOST'),
         'db_user': get_config_val(config,'DB_USER'),
