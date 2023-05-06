@@ -108,7 +108,6 @@ class TunneledConnection(object):
         self.tunnel = get_ssh_tunnel(self.config)
         self.engine = None
         self.connection = None
-        self.session = None
 
     def __enter__(self):
         return self.connect()
@@ -127,12 +126,11 @@ class TunneledConnection(object):
             self.engine = init_unix_connection_engine(self.config)
 
         self.connection = self.engine.connect()
-        self.session = sqlalchemy.orm.Session(self.connection)
         return self.connection
 
     def __exit__(self, *args):
         self.connection.close()
-        if self.tunnel:
+        if self.tunnel and self.connection.closed:
             self.tunnel.close()
 
 def get_config_val(cfg, key, default=None):

@@ -58,7 +58,7 @@ def task_record_event(event_class, input_json_str):
             print(f"recorded {event_class} {new_event.id} - {new_event.event_name}")
 
             if event_class == 'EventObservation' and new_event.weather_id == None:
-                set_weather_for_event(new_event)
+                set_weather_for_event(new_event.event_name)
 
         except sqlalchemy.exc.IntegrityError as ie:
             session.rollback()
@@ -78,15 +78,13 @@ def fetch_weather():
 
     return Weather(**(resp.json()))
 
-def set_weather_for_event(event):
+def set_weather_for_event(event_name):
     with connection:
         session = sqlalchemy.orm.Session(connection)
-        # event = session.scalars(select(EventObservation).where(EventObservation.event_name == event_name)).one()
+        event = session.scalars(select(EventObservation).where(EventObservation.event_name == event_name)).one()
         earliest_weather = event.capture_time - weather_window
         latest_weather = event.capture_time + weather_window
         weather = session.scalars(select(Weather).where(Weather.valid_at >= earliest_weather).limit(1)).one_or_none()
-
-        breakpoint()
 
         if not weather:
             weather = fetch_weather() 
@@ -115,16 +113,17 @@ def set_weather_for_event(event):
 
 def test_find_weather_for_event():
     example_event_name = ""
+    # with TunneledConnection() as tc:
     with connection:
         session = sqlalchemy.orm.Session(connection)
         examp = session.scalars(select(EventObservation).order_by(-EventObservation.capture_time).limit(1)).one()
 
-    example_event_name = examp.event_name
+        example_event_name = examp.event_name
 
-    print(f"using event {example_event_name} from {datetime.now() - examp.capture_time} ago")
-    set_weather_for_event(examp)
+        print(f"using event {example_event_name} from {datetime.now() - examp.capture_time} ago")
+        set_weather_for_event(example_event_name)
 
-    with connection:
+    # with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(connection)
         event = session.scalars(select(EventObservation).where(EventObservation.event_name == example_event_name)).one() 
         
