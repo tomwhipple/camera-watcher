@@ -1,5 +1,5 @@
 sqlalchemy>=2.0.12
-mysqlclient>=2.1.0
+PyMySQL>=1.0.3
 sshtunnel
 passlib>=1.7.4
 Flask-HTTPAuth>=4.5.0
