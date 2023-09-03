@@ -4,3 +4,5 @@ application.cfg
 *.pem
 .ipynb_checkpoints
 pyenv-watcher
+*.sqlite3
+etc/motion/camera
