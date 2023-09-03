@@ -17,9 +17,6 @@ __all__ = ['TunneledConnection','application_config','redis_connection']
 def redis_connection():
     return redis.Redis(host=application_config('system','REDIS_HOST'))
 
-# def redis_queue():
-#     return Queue(connection=redis_connection())
-
 def application_config(section_name=None, config_variable=None):
     parser = configparser.ConfigParser()
 
@@ -76,8 +73,9 @@ def get_db_config():
             # [END cloud_sql_mysql_sqlalchemy_lifetime]
         },
 
-        'driver': 'mysql+pymysql',
+        'driver': get_config_val(config, 'DB_DRIVER', 'mysql+pymysql'),
 
+        'db_file': get_config_val(config,'DB_FILE'),
         'db_host': get_config_val(config,'DB_HOST'),
         'db_user': get_config_val(config,'DB_USER'),
         'db_pass': get_config_val(config,'DB_PASS'),
@@ -122,8 +120,10 @@ class TunneledConnection(object):
                 self.engine = init_tcp_sslcerts_connection_engine(self.config)
             else:
                 self.engine = init_tcp_connection_engine(self.config)
-        else: 
+        elif self.config.get('db_user'):
             self.engine = init_unix_connection_engine(self.config)
+        else:
+            self.engine = init_local_file_connection_engine(self.config)
 
         self.connection = self.engine.connect()
         return self.connection
@@ -149,13 +149,23 @@ def get_ssh_tunnel(db_config):
         )
     return tunnel
 
+def init_local_file_connection_engine(db_config):
+    pool = sqlalchemy.create_engine(
+        sqlalchemy.engine.url.URL.create(
+                drivername=db_config['driver'],
+                database=db_config['db_name'],
+
+        ),
+        **db_config['connection_config']
+    )
+    return pool
+
 def init_tcp_sslcerts_connection_engine(db_config):
 
     pool = sqlalchemy.create_engine(
         # Equivalent URL:
         # mysql+pymysql://<db_user>:<db_pass>@<db_host>:<db_port>/<db_name>
         sqlalchemy.engine.url.URL.create(
-            #drivername="mysql+pymysql",
             drivername=db_config['driver'],
             username=db_config['db_user'],  # e.g. "my-database-user"
             password=db_config['db_pass'],  # e.g. "my-database-password"
@@ -176,7 +186,6 @@ def init_tcp_connection_engine(db_config):
         # Equivalent URL:
         # mysql+pymysql://<db_user>:<db_pass>@<db_host>:<db_port>/<db_name>
         sqlalchemy.engine.url.URL.create(
-            #drivername="mysql+pymysql",
             drivername=db_config['driver'],
             username=db_config['db_user'],  # e.g. "my-database-user"
             password=db_config['db_pass'],  # e.g. "my-database-password"
@@ -196,7 +205,6 @@ def init_unix_connection_engine(db_config):
         # Equivalent URL:
         # mysql+pymysql://<db_user>:<db_pass>@/<db_name>?unix_socket=<socket_path>/<cloud_sql_instance_name>
         sqlalchemy.engine.url.URL.create(
-            #drivername="mysql+pymysql",
             drivername=db_config['driver'],
             username=db_config['db_user'],  # e.g. "my-database-user"
             password=db_config['db_pass'],  # e.g. "my-database-password"
