@@ -42,5 +42,7 @@ COPY application.cfg ./
 
 COPY etc etc/
 
+RUN mkdir /data
+
 CMD ./docker-start.sh
 EXPOSE 6379
