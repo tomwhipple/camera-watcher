@@ -31,14 +31,16 @@ RUN ./configure
 RUN make -j 16 install
 
 
-
 ## Our code & python dependencies
+WORKDIR /app
 RUN git clone https://github.com/tomwhipple/camera-watcher.git
 
-WORKDIR /app/camera-watcher
+WORKDIR camera-watcher
 
-RUN sqlite3 db/watcher.sqlite3 -init db/watcher.sql
+RUN test -f /data/watcher.sqlite3 || sqlite3 /data/watcher.sqlite3 -init db/watcher.sql
 COPY application.cfg ./
-#COPY etc/motion/camera etc/motion/camera
 
-COPY etc/* /etc/
+COPY etc etc/
+
+CMD ./docker-start.sh
+EXPOSE 6379
