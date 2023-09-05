@@ -18,7 +18,7 @@ DROP TABLE IF EXISTS "api_users";
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "api_users" (
-  "id" bigint(20) PRIMARY KEY NOT NULL,
+  "id" INTEGER PRIMARY KEY NOT NULL,
   "username" varchar(128) DEFAULT NULL,
   "key_hash" varchar(256) DEFAULT NULL
 );
@@ -32,7 +32,7 @@ DROP TABLE IF EXISTS "computations";
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "computations" (
-  "id" bigint(20) PRIMARY KEY NOT NULL,
+  "id" INTEGER PRIMARY KEY NOT NULL,
   "event_name" varchar(100) DEFAULT NULL,
   "method_name" varchar(30) DEFAULT NULL,
   "computed_at" timestamp NOT NULL , 
@@ -54,8 +54,8 @@ DROP TABLE IF EXISTS "event_classifications";
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "event_classifications" (
-  "id" bigint(20) PRIMARY KEY NOT NULL,
-  "observation_id" bigint(20)  NOT NULL,
+  "id" INTEGER PRIMARY KEY NOT NULL,
+  "observation_id" INTEGER  NOT NULL,
   "decider" varchar(10) DEFAULT NULL,
   "decision_time" timestamp NOT NULL,
   "confidence" double DEFAULT NULL,
@@ -74,7 +74,7 @@ DROP TABLE IF EXISTS "event_observations";
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "event_observations" (
-  "id" bigint(20) PRIMARY KEY NOT NULL,
+  "id" INTEGER PRIMARY KEY NOT NULL,
   "video_file" varchar(75) UNIQUE DEFAULT NULL,
   "capture_time" datetime DEFAULT NULL,
   "scene_name" varchar(20) DEFAULT NULL,
@@ -85,7 +85,7 @@ CREATE TABLE "event_observations" (
   "noise_level" int(11) DEFAULT NULL,
   "threshold" int(11) DEFAULT NULL,
   "lighting_type" varchar(10) DEFAULT NULL,
-  "weather_id" bigint(20)  DEFAULT NULL,
+  "weather_id" INTEGER  DEFAULT NULL,
   -- UNIQUE KEY "id" ("id"),
   -- UNIQUE KEY "idx_video_file" ("video_file"),
   -- UNIQUE KEY "idx_event_name" ("event_name"),
@@ -102,8 +102,8 @@ DROP TABLE IF EXISTS "motion_events";
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "motion_events" (
-  "id" bigint(20) PRIMARY KEY NOT NULL,
-  "frame" bigint(20) DEFAULT NULL,
+  "id" INTEGER PRIMARY KEY NOT NULL,
+  "frame" INTEGER DEFAULT NULL,
   "x" int(11) DEFAULT NULL,
   "y" int(11) DEFAULT NULL,
   "width" int(11) DEFAULT NULL,
@@ -125,9 +125,9 @@ DROP TABLE IF EXISTS "uploads";
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "uploads" (
-  "id" bigint(20) PRIMARY KEY NOT NULL,
+  "id" INTEGER PRIMARY KEY NOT NULL,
   "sync_at" timestamp NOT NULL,
-  "object_id" bigint(20)  NOT NULL,
+  "object_id" INTEGER  NOT NULL,
   "object_class" varchar(20) DEFAULT NULL,
   "http_status" smallint(6) DEFAULT NULL,
   "upload_batch" varchar(40) DEFAULT NULL
@@ -143,7 +143,7 @@ DROP TABLE IF EXISTS "weather";
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "weather" (
-  "id" bigint(20) PRIMARY KEY NOT NULL,
+  "id" INTEGER PRIMARY KEY NOT NULL,
   "valid_at" timestamp NOT NULL,
   "valid_at_tz_offset_min" int(11) DEFAULT NULL,
   "description" text DEFAULT NULL,
