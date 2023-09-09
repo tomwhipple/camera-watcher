@@ -30,19 +30,22 @@ RUN autoreconf -fiv
 RUN ./configure
 RUN make -j 16 install
 
-
 ## Our code & python dependencies
-WORKDIR /app
-RUN git clone https://github.com/tomwhipple/camera-watcher.git
 
-WORKDIR camera-watcher
+RUN mkdir -p /app/camera-watcher
 
-RUN test -f /data/watcher.sqlite3 || sqlite3 /data/watcher.sqlite3 -init db/watcher.sql
+WORKDIR /app/camera-watcher
+
+COPY *.py ./
+
 COPY application.cfg ./
-
+COPY docker-start.sh ./
 COPY etc etc/
+COPY watcher watcher/
 
-RUN mkdir /data
+RUN mkdir -p /data
+RUN mkdir -p /var/log/redis
 
 CMD ./docker-start.sh
+
 EXPOSE 6379

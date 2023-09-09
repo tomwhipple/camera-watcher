@@ -5,5 +5,10 @@ test -f /data/watcher.sqlite3 || sqlite3 /data/watcher.sqlite3 -init db/watcher.
 redis-server etc/redis.conf
 motion -c etc/motion/motion.conf -b
 
-./watchutil.py ioworker &
-./rq worker -s video default &
+rq worker -s video default 2>&1 >> /var/log/video-worker.log
+
+./watchutil.py ioworker 2>&1 >> /var/log/io-worker.log &
+
+wait -n
+
+exit $?
