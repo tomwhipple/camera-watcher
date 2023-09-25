@@ -1,0 +1,45 @@
+services:
+  redis:
+    image: redis:alpine
+    ports:
+      - 6379:6379
+    volumes:
+      - ./etc:/usr/local/etc:ro
+      - ./log:/var/log
+
+  motion:
+    build:
+      dockerfile: motion.Dockerfile
+    command: motion -n
+    depends_on:
+      - redis
+    volumes:
+      - ./data:/data
+      - ./log:/var/log
+      - ./etc:/usr/local/etc:ro
+    environment:
+      - REDIS_URL=redis://redis
+
+  video-worker:
+    #image: watcher
+    build: .
+    #command: rq worker -s event_video 2>&1 >> /var/log/video-worker.log
+    command: ./watchutil.py videoworker 2>&1 >> /var/log/video-worker.log
+    depends_on:
+      - redis
+      - motion
+    volumes:
+      - ./data:/data
+      - ./log:/var/log
+      - ./etc:/usr/local/etc:ro
+
+  io-worker:
+    #image: watcher
+    build: .
+    command: ./watchutil.py ioworker 2>&1 >> /var/log/io-worker.log
+    depends_on:
+      - redis
+    volumes:
+      - ./data:/data
+      - ./log:/var/log
+      - ./etc:/usr/local/etc:ro
