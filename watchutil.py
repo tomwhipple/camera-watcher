@@ -59,52 +59,6 @@ def upload_event_in_file(session, filename):
             print(filename)
 
 
-def upload_events_in_directory(session, basedir, limit):
-    filelist = []
-
-    for filename in os.listdir(basedir):
-        if filename.endswith(".jsonl"):
-            filelist.append(os.path.join(basedir,filename))
-            if limit and len(filelist) >= limit:
-                break
-
-    counter = 0
-    for file in filelist:
-        upload_event_in_file(session, file)
-
-        if counter % 25 == 0:
-            session.commit()
-
-        counter += 1
-
-
-def write_event_jsonl(parsed_event, working_directory=DEFAULT_WORKING_DIR):
-
-    event_name = PurePath(parsed_event['pathToVideo']).stem
-
-    event_jsonl_file = str(PurePath(working_directory).joinpath(event_name + '.jsonl'))
-    with open(event_jsonl_file, 'a+') as single_event_log:
-        single_event_log.write(json.dumps(parsed_event, sort_keys=True))
-        single_event_log.write("\n")
-
-    single_event_log.close()
-
-def record_kerberos_event(session, input_json, jsonl_directory=DEFAULT_WORKING_DIR):
-    if isinstance(input_json, dict):
-        parsed_event = input_json
-    else:
-        parsed_event = json.loads(input_json)
-
-    stmt = select(EventObservation).where(EventObservation.video_file)
-    result = session.execute(stmt)
-    if len(result.all()) == 0:
-        session.add(EventObservation(
-            video_file=parsed_event['pathToVideo'],
-            scene_name=parsed_event['instanceName'],
-            capture_time=datetime.fromtimestamp(int(parsed_event['timestamp'])),
-            storage_local=True
-        ))
-    write_event_jsonl(parsed_event, jsonl_directory)
 
 def set_user_key(session, username):
     user = session.query(APIUser).filter_by(username = username).first()
@@ -143,29 +97,6 @@ def update_solar_lighting_type(session):
             print(f"updated {count}")
 
     print(f"updated {count} records")
-
-def update_video_directory(session):
-    basedir = Path(config['system']['BASE_DIR'])
-
-    stmt = select(EventObservation).where(EventObservation.video_location == None)
-    result = session.execute(stmt)
-
-    count = 0
-    for obs in result.scalars():
-        location = basedir / obs.scene_name / 'capture'
-        videopath = location / obs.video_file
-        if videopath.is_file():
-            obs.video_location = location
-            obs.storage_local = True
-
-            count += 1
-            if count % 100 == 0:
-                session.commit()
-                print(f"updated {count}")
-        else:
-            obs.storage_local = False
-
-    print(f"upated {count} total file locations")
 
 
 def remove_night_videos(session): 
@@ -273,7 +204,7 @@ def show_failed(sub_args=None):
 
 def main():
     parser = argparse.ArgumentParser(description='Utilites for watcher')
-    parser.add_argument('action', choices=['upload_file', 'upload_dir', 'record_kerberos', 'set_user', 'update_lighting', 'update_dirs', 'syncup','enque','failed','ioworker','rm_night_videos'])
+    parser.add_argument('action', choices=['set_user', 'update_lighting', 'update_dirs', 'syncup','enque','failed','ioworker','rm_night_videos'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
     parser.add_argument('-l', '--limit', type=int)
@@ -296,16 +227,8 @@ def main():
 
         if args.set_user:
             set_user_key(session, str(args.set_user))
-        elif args.action == 'upload_file':
-            upload_event_in_file(session, str(args.file))
-        elif args.action == 'upload_dir':
-            upload_events_in_directory(session, str(args.input_directory), args.limit)
-        elif args.action == 'record_kerberos':
-            record_kerberos_event(session, args.sub_args, args.input_directory)
         elif args.action == 'update_lighting':
             update_solar_lighting_type(session)
-        elif args.action == 'update_dirs':
-            update_video_directory(session)
         elif args.action == 'syncup':
             batch_sync_to_remote(session)
         elif args.action == 'enque':
@@ -324,3 +247,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+i
