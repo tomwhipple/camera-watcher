@@ -15,7 +15,8 @@ APPLICATION_CONFIG_FILE = 'application.cfg'
 __all__ = ['TunneledConnection','application_config','redis_connection']
 
 def redis_connection():
-    return redis.Redis(host=application_config('system','REDIS_HOST'))
+    redis_host = os.environ.get('REDIS_HOST') or application_config('system','REDIS_HOST')
+    return redis.Redis(host=redis_host)
 
 def application_config(section_name=None, config_variable=None):
     parser = configparser.ConfigParser()
@@ -134,7 +135,7 @@ class TunneledConnection(object):
             self.tunnel.close()
 
 def get_config_val(cfg, key, default=None):
-    return cfg.get(key) or os.environ.get(key) or default
+    return os.environ.get(key) or cfg.get(key) or default
 
 def get_ssh_tunnel(db_config):
     if not db_config.get("db_ssh_host"):

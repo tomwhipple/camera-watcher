@@ -31,8 +31,8 @@ __all__ = ['MotionEvent', 'EventObservation', 'EventClassification', 'APIUser', 
 
 config = application_config()
 
-BASE_URL=config['system'].get('BASE_URL')
-BASE_DIR=config['system'].get('BASE_DIR')
+BASE_URL=os.environ.get('BASE_URL') or config['system'].get('BASE_URL')
+BASE_DIR=os.environ.get('BASE_DIR') or config['system'].get('BASE_DIR') 
 
 Base = declarative_base()
 
@@ -215,9 +215,9 @@ class EventObservation(Base):
                             backref="observation")
 
     #weather = relationship("Weather", foreign_keys=[id], primaryjoin=lambda: EventObservation.weather_id == Weather.id) 
-    # weather_id : Mapped[int] = mapped_column(ForeignKey("weather.id"))
+    #weather_id : Mapped[int] = mapped_column(ForeignKey("weather.id"))
     # weather: Mapped["Weather"]
-    weather_id = Column(BigInteger)
+    #weather_id = Column(BigInteger)
 
     def __init__(self, **input):
         self.__dict__.update(input)
@@ -230,6 +230,7 @@ class EventObservation(Base):
 
         video_fullpath = input.get('video_fullpath')
         local_root = input.get('video_root', BASE_DIR)
+
         if video_fullpath:
             p = Path(video_fullpath)
             self.video_file = str(p.name)

@@ -27,6 +27,7 @@ from astral import LocationInfo
 
 from watcher import *
 from watcher.lite_tasks import run_io_queues
+from watcher.video import run_video_queue, task_save_significant_frame
 from hardswitch import NetworkPowerSwitch
 
 config = application_config()
@@ -204,7 +205,16 @@ def show_failed(sub_args=None):
 
 def main():
     parser = argparse.ArgumentParser(description='Utilites for watcher')
-    parser.add_argument('action', choices=['set_user', 'update_lighting', 'update_dirs', 'syncup','enque','failed','ioworker','rm_night_videos'])
+    parser.add_argument('action', choices=[
+        'set_user',
+        'update_lighting',
+        'update_dirs',
+        'syncup','enque',
+        'failed',
+        'ioworker',
+        'videoworker',
+        'singlevideo',
+        'rm_night_videos'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
     parser.add_argument('-l', '--limit', type=int)
@@ -237,8 +247,12 @@ def main():
             show_failed(args.sub_args)
         elif args.action == 'ioworker':
             run_io_queues()
+        elif args.action == 'videoworker':
+            run_video_queue()
         elif args.action == 'rm_night_videos':
             remove_night_videos(session)
+        elif args.action == 'singlevideo':
+            task_save_significant_frame(args.sub_args)
         else:
             print("No action specified.")
 
@@ -247,4 +261,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-i

@@ -6,7 +6,7 @@ import json
 import math
 
 from pathlib import Path
-from rq import Queue, Retry
+from rq import Queue, Retry, Worker
 
 import cv2 as cv
 import numpy as np
@@ -22,13 +22,15 @@ from .model import EventObservation, Computation
 from .image_functions import *
 from .lite_tasks import *
 
-__all__ = ['EventVideo','task_save_significant_frame']
+__all__ = ['EventVideo','task_save_significant_frame', 'run_video_queue']
 
 NUM_INITAL_FRAMES_TO_AVERAGE = 5
 DEFAULT_MAX_FRAMES_PER_CHUNK = 50
 
 shared_tunnel = None
 def get_shared_tunnel():
+    global shared_tunnel
+
     if not shared_tunnel:
         shared_tunnel = TunneledConnection().connect()
     return shared_tunnel
@@ -38,8 +40,8 @@ class EventVideo(object):
     session = None
 
     event = None
-    file = None
     name = None
+    file = ""
 
     frames = None
     most_significant_frame_idx = None
@@ -61,28 +63,27 @@ class EventVideo(object):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
 
-        if not self.file:
-            if not self.event:
-                stmt = None
-                if self.name:
-                    stmt = select(EventObservation).where(EventObservation.event_name == self.name)
-                else:
-                    stmt = select(EventObservation).order_by(EventObservation.capture_time.desc()).limit(1)
-                
-                session = self.get_session()
-                self.event = session.execute(stmt).scalar()
-                if not self.event:
-                    msg = f'event {self.name} not found'
-                    raise Exception(msg)
+        stmt = select(EventObservation).where(EventObservation.event_name == self.name)
+        session = self.get_session()
+        self.event = session.execute(stmt).scalar()
+        if not self.event:
+            msg = f'event {self.name} not found'
+            raise Exception(msg)
 
-            self.file = self.event.file_path()
+        vidfile = self.event.file_path()
 
-        if not self.file or not os.access(self.file, os.R_OK):
-            self.file = self.event.video_url()
+        if not vidfile or not os.access(vidfile, os.R_OK):
+            msg = f'could not read: {vidfile}'
+            raise Exception(msg)
+
+        self.file = vidfile
+
 
     def probe_file(self):
         try:
-            info = ffmpeg.probe(self.file)
+            #print(f"PROBING FILE: {self.file}")
+            #print(f"PROBING FILE: {self.event.file_path()}")
+            info = ffmpeg.probe(self.event.file_path())
 
             tries_remaining = 3
             while not 'streams' in info and tries_remaining > 0:
@@ -194,14 +195,14 @@ def task_save_significant_frame(name):
         result = {}
         session = sqlalchemy.orm.Session(tc)
 
-        prior_results = session.execute(
-            select(Computation).where(Computation.event_name == name)
-            .where(Computation.method_name == 'task_save_significant_frame')
-            .where(Computation.success == True)
-        )
-        if len(prior_results.scalars().all()) > 0:
-            print(f"already computed task_save_significant_frame for {name}")
-            return
+        # prior_results = session.execute(
+        #     select(Computation).where(Computation.event_name == name)
+        #     .where(Computation.method_name == 'task_save_significant_frame')
+        #     .where(Computation.success == True)
+        # )
+        # if len(prior_results.scalars().all()) > 0:
+        #     print(f"already computed task_save_significant_frame for {name}")
+        #     return
 
         comp = Computation(event_name=name, method_name='task_save_significant_frame')
         try: 
@@ -227,7 +228,7 @@ def task_save_significant_frame(name):
             img = Image.fromarray(frame_img,mode='RGB')
 
             comp.result_file = img_relpath.name
-            comp.result_file_location = img_relpath.parent
+            comp.result_file_location = str(img_relpath.parent)
             comp.success = True
 
             queue = Queue('write_image', connection = redis_connection())
@@ -246,3 +247,9 @@ def task_save_significant_frame(name):
             session.commit()
 
         print(f"found frame {sig_frame} for {name}. Will store as {img_relpath}")
+        
+def run_video_queue(queues = ['event_video']):
+    connection = get_shared_tunnel()
+    with connection:
+        worker = Worker(queues, connection=redis_connection())
+        worker.work()
