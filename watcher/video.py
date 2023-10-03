@@ -195,14 +195,14 @@ def task_save_significant_frame(name):
         result = {}
         session = sqlalchemy.orm.Session(tc)
 
-        # prior_results = session.execute(
-        #     select(Computation).where(Computation.event_name == name)
-        #     .where(Computation.method_name == 'task_save_significant_frame')
-        #     .where(Computation.success == True)
-        # )
-        # if len(prior_results.scalars().all()) > 0:
-        #     print(f"already computed task_save_significant_frame for {name}")
-        #     return
+        prior_results = session.execute(
+            select(Computation).where(Computation.event_name == name)
+            .where(Computation.method_name == 'task_save_significant_frame')
+            .where(Computation.success == True)
+        )
+        if len(prior_results.scalars().all()) > 0:
+            print(f"already computed task_save_significant_frame for {name}")
+            return
 
         comp = Computation(event_name=name, method_name='task_save_significant_frame')
         try: 
