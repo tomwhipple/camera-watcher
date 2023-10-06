@@ -117,8 +117,7 @@ class EventVideo(object):
         if not self.frames:
             self.load_frames()
 
-        if not self.num_frames: 
-            self.probe_file()
+        self.num_frames = np.shape(self.frames)[0]
 
         if not self.most_significant_frame_idx:
             thresh_sums = np.zeros(self.num_frames)

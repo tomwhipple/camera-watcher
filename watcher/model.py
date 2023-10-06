@@ -214,10 +214,10 @@ class EventObservation(Base):
                             uselist=True, 
                             backref="observation")
 
-    #weather = relationship("Weather", foreign_keys=[id], primaryjoin=lambda: EventObservation.weather_id == Weather.id) 
-    #weather_id : Mapped[int] = mapped_column(ForeignKey("weather.id"))
+    # weather = relationship("Weather", foreign_keys=[id], primaryjoin=lambda: EventObservation.weather_id == Weather.id) 
+    # weather_id : Mapped[int] = mapped_column(ForeignKey("weather.id"))
     # weather: Mapped["Weather"]
-    #weather_id = Column(BigInteger)
+    weather_id = Column(Integer)
 
     def __init__(self, **input):
         self.__dict__.update(input)
