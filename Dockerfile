@@ -5,7 +5,7 @@ FROM python:3-bookworm
 RUN apt-get update
 RUN apt-get -y install sqlite3 redis
 RUN apt-get -y install libgl-dev
-
+RUN apt-get -y install ffmpeg
 
 ## python requirements
 WORKDIR /app
