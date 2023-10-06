@@ -95,7 +95,7 @@ class Computation(Base):
         self.host_info = kwargs.get('host_info',json.dumps(platform.uname()))
         try:
             self.git_version = kwargs.get('git_version',subprocess.check_output('git describe --always --dirty --tags'.split()).decode('utf-8').strip())
-        except Error as e:
+        except Exception as e:
             print("Intercepted an error: ", e)
 
     def start_timer(self):
