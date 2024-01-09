@@ -23,3 +23,12 @@ COPY *.py ./
 
 COPY application.cfg ./
 COPY watcher watcher/
+
+## API support
+#COPY _watcher.fcgi ./
+
+
+## Make a self signed cert for local use
+# RUN openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes \
+# -keyout etc/key.pem -out etc/cert.pem \
+# -subj '/CN=localhost'

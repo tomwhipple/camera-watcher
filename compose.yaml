@@ -5,7 +5,6 @@ services:
       - 6379:6379
     volumes:
       - ./etc:/usr/local/etc:ro
-      - ./log:/var/log
 
   motion:
     build:
@@ -43,3 +42,27 @@ services:
       - ./data:/data
       - ./log:/var/log
       - ./etc:/usr/local/etc:ro
+
+  # api:
+  #   build: .
+  #   profiles: ["api"]
+  #   command: uwsgi --http 127.0.0.1:8000 --master -p 4 -w api:app
+  #   ports:
+  #     - 127.0.0.1:80:8000
+  #     #- 127.0.0.1:443:443
+  #   volumes:
+  #     - ./data:/data
+  #     - ./log:/var/log
+  #     - ./etc:/usr/local/etc:ro
+    
+  static-web:
+    image: nginx
+    profiles: ["web"]
+    volumes:
+     - ./data/video:/data/video:ro
+     - ./etc/nginx:/etc/nginx:ro
+    ports:
+     - "8080:80"
+    environment:
+     - NGINX_HOST=mira.local
+     - NGINX_PORT=80

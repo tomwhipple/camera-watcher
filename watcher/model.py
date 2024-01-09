@@ -31,8 +31,8 @@ __all__ = ['MotionEvent', 'EventObservation', 'EventClassification', 'APIUser', 
 
 config = application_config()
 
-BASE_URL=os.environ.get('BASE_URL') or config['system'].get('BASE_URL')
-BASE_DIR=os.environ.get('BASE_DIR') or config['system'].get('BASE_DIR') 
+BASE_STATIC_URL=os.environ.get('BASE_STATIC_PUBLIC_URL') or config['system'].get('BASE_STATIC_PUBLIC_URL')
+LOCAL_DATA_DIR=os.environ.get('LOCAL_DATA_DIR') or config['system'].get('LOCAL_DATA_DIR') 
 
 Base = declarative_base()
 
@@ -108,7 +108,7 @@ class Computation(Base):
     def result_file_fullpath(self):
         if not self.result_file:
             return None
-        return Path(BASE_DIR) / self.result_file_location / self.result_file
+        return Path(LOCAL_DATA_DIR) / self.result_file_location / self.result_file
 
     def sync_select():
         return text("""
@@ -208,11 +208,11 @@ class EventObservation(Base):
     lighting_type = Column(String)
 
     classifications = relationship("EventClassification", back_populates='observation')
-    motions = relationship("MotionEvent", 
-                            foreign_keys=[event_name], 
-                            primaryjoin=lambda: EventObservation.event_name == MotionEvent.event_name,
-                            uselist=True, 
-                            backref="observation")
+    # motions = relationship("MotionEvent", 
+    #                         foreign_keys=[event_name], 
+    #                         primaryjoin=lambda: EventObservation.event_name == MotionEvent.event_name,
+    #                         uselist=True, 
+    #                         backref="observation")
 
     # weather = relationship("Weather", foreign_keys=[id], primaryjoin=lambda: EventObservation.weather_id == Weather.id) 
     # weather_id : Mapped[int] = mapped_column(ForeignKey("weather.id"))
@@ -229,7 +229,7 @@ class EventObservation(Base):
         camera_location = LocationInfo()
 
         video_fullpath = input.get('video_fullpath')
-        local_root = input.get('video_root', BASE_DIR)
+        local_root = input.get('video_root', LOCAL_DATA_DIR)
 
         if video_fullpath:
             p = Path(video_fullpath)
@@ -265,18 +265,11 @@ class EventObservation(Base):
             'capture_time': self.capture_time.isoformat(),
             'scene_name': self.scene_name,
             'video_url': self.video_url(),
-            'labels': list(map(lambda : c.label, self.classifications))
+            'labels': list(map(lambda c: c.label, self.classifications))
         }
 
     def video_url(self):
-        url = BASE_URL 
-
-        if self.video_location and self.storage_local:
-            url += self.video_location.removeprefix(BASE_DIR) + '/' + self.video_file
-        else:
-            url += self.scene_name + "/capture/" + self.video_file
-
-        return url
+        return BASE_STATIC_URL + '/' + self.video_location + '/' + self.video_file
 
     def upload_dict(self):
         return {
@@ -292,7 +285,7 @@ class EventObservation(Base):
         }
 
     def file_path(self):
-        fullpath = Path(BASE_DIR)
+        fullpath = Path(LOCAL_DATA_DIR)
         if self.video_location:
             fullpath = fullpath / self.video_location / self.video_file
         else:
@@ -337,6 +330,10 @@ class EventClassification(Base):
     is_deprecated = Column(Boolean)
 
     observation = relationship("EventObservation", back_populates='classifications')
+
+    def __init__(self, **input):
+        self.__dict__.update(input)
+        self.decision_time = datetime.now()
 
     def api_response_dict(self):
         return {

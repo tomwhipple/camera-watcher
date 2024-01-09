@@ -4,8 +4,6 @@ import sys
 import json
 import argparse
 import pathlib
-import os
-import configparser
 import requests
 import logging
 
@@ -33,7 +31,7 @@ from hardswitch import NetworkPowerSwitch
 config = application_config()
 logger = logging.getLogger(sys.argv[0])
 
-DEFAULT_WORKING_DIR = PurePath(config['system']['BASE_DIR']) / 'wellerDriveway/capture'
+DEFAULT_WORKING_DIR = PurePath(config['system']['LOCAL_DATA_DIR']) or "data/video"
 
 query_get_not_uploaded = """
 select *
@@ -62,6 +60,7 @@ def upload_event_in_file(session, filename):
 
 
 def set_user_key(session, username):
+    username = username.lower()
     user = session.query(APIUser).filter_by(username = username).first()
     if not user:
         user = APIUser(username = username)
@@ -208,13 +207,14 @@ def main():
     parser.add_argument('action', choices=[
         'set_user',
         'update_lighting',
-        'update_dirs',
-        'syncup','enque',
+        'syncup',
+        'enque',
         'failed',
         'ioworker',
         'videoworker',
         'singlevideo',
-        'rm_night_videos'])
+        'rm_night_videos',
+        'pass'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
     parser.add_argument('-l', '--limit', type=int)

@@ -4,7 +4,9 @@ import json
 import argparse
 
 import sqlalchemy
-from sqlalchemy import text, select
+from sqlalchemy import text, select, desc
+
+from datetime import datetime
 
 from flask import *
 from flask_httpauth import HTTPBasicAuth
@@ -12,18 +14,17 @@ from werkzeug.exceptions import InternalServerError, BadRequest
 from rq import Queue, Retry
 from PIL import Image
 
+from werkzeug.middleware.proxy_fix import ProxyFix
+
 from watcher.model import *
 from watcher.connection import *
 from watcher.lite_tasks import task_record_event, task_write_image
 
-query_uncategorized_sql = """select * 
-from event_observations obs 
-where obs.storage_local is True 
-and obs.lighting_type = 'daylight' 
-and obs.id not in (select distinct observation_id from event_classifications) order by rand() limit 20"""
 query_dbtest_sql = "select count(*) from event_observations"
 
 app = Flask("watcher")
+app.wsgi_app = ProxyFix(app.wsgi_app)
+
 auth = HTTPBasicAuth()
 is_cli = None
 
@@ -94,13 +95,32 @@ def recieve_batch():
 
 @app.route("/uncategorized")
 @auth.login_required
-def get_uncategorized(request=None, context=None):
+def get_uncategorized():
     obs_out = []
 
-    with TunneledConnection() as tc:
 
+    with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(tc)
-        observations = session.query(EventObservation).from_statement(text(query_uncategorized_sql))
+
+        before = datetime.now()
+        before_str = request.args.get("before")
+        if before_str:
+            try:
+                before = datetime.fromisoformat(before_str)
+            except (TypeError, ValueError) as pe:
+                app.logger.debug(f"skipping 'before' parameter: {pe}")
+
+        stmt = (
+            select(EventObservation)
+            .where(EventObservation.lighting_type == 'daylight')
+            .where(EventObservation.storage_local == True)
+            .where(EventObservation.capture_time < before)
+            .where(EventObservation.id.notin_(select(EventClassification.id).distinct()))
+            .order_by(desc(EventObservation.capture_time))
+            .limit(2)
+        )
+
+        observations = session.query(EventObservation).from_statement(stmt)
 
         for o in observations:
             obs_out.append(o.api_response_dict())
@@ -118,7 +138,7 @@ def get_labels():
         for l in session.execute(stmt).fetchall():
             labels.append(l[0])
 
-        return json.dumps(labels)
+        return jsonify(labels)
 
 @app.route("/classify", methods=['POST'])
 @auth.login_required
@@ -197,6 +217,9 @@ def create_event_observation():
 
 @auth.verify_password
 def verify_password(username, key):
+    username = username.lower().strip()
+    key = key.strip()
+
     if is_cli:
         return True
 
@@ -205,6 +228,7 @@ def verify_password(username, key):
 
         user = session.query(APIUser).filter_by(username = username).first()
         if not user or not user.verify_key(key):
+            app.logger.warn(f"failed login for: '{username}' with key: '{key}'")
             return False
         g.user = user
         return True
@@ -213,9 +237,10 @@ if __name__ == "__main__":
     is_cli = True
 
     parser = argparse.ArgumentParser(description='API via command line')
-    parser.add_argument('action', choices=['hello','dbtest'])
+    parser.add_argument('action', choices=['hello','dbtest','get_uncategorized'])
 
     args = parser.parse_args()
+    client = app.test_client()
 
     if args.action == 'hello':
         print(hello())
@@ -224,7 +249,9 @@ if __name__ == "__main__":
     elif args.action == 'get_labels':
         print(get_labels())
     elif args.action == 'get_uncategorized':
-        print(get_uncategorized())
+        response = client.get('/uncategorized')
+        print(response.data)
+
     else:
         print("no action specified")
 
