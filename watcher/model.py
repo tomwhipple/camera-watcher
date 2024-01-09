@@ -36,11 +36,16 @@ LOCAL_DATA_DIR=os.environ.get('LOCAL_DATA_DIR') or config['system'].get('LOCAL_D
 
 Base = declarative_base()
 
+def get_local_time_iso(a_time):
+    tz = pytz.timezone(config["location"].get('TIMEZONE'))
+    with_tz = tz.localize(a_time)
+    return with_tz.isoformat()
+
 class JSONEncoder(json.JSONEncoder):
     def default(self, o):
 
         if isinstance(o, datetime):
-            return o.isoformat()
+            return get_local_time_iso(o)
 
         if type(o).__name__ in ['Computation', 'MotionEvent', 'EventObservation', 'EventClassification']:
 
@@ -49,7 +54,7 @@ class JSONEncoder(json.JSONEncoder):
                 if k[0] == '_':
                     del result[k]
                 elif isinstance(result[k], datetime):
-                    result[k] = result[k].isoformat()
+                    result[k] = get_local_time_iso(result[k])
 
             return result
 
@@ -262,7 +267,7 @@ class EventObservation(Base):
         return {
             'event_observation_id': self.id,
             'video_file': self.video_file,
-            'capture_time': self.capture_time.isoformat(),
+            'capture_time': get_local_time_iso(self.capture_time),
             'scene_name': self.scene_name,
             'video_url': self.video_url(),
             'labels': list(map(lambda c: c.label, self.classifications))

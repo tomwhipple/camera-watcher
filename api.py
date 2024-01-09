@@ -2,6 +2,8 @@
 
 import json
 import argparse
+import pytz
+import logging
 
 import sqlalchemy
 from sqlalchemy import text, select, desc
@@ -24,6 +26,7 @@ query_dbtest_sql = "select count(*) from event_observations"
 
 app = Flask("watcher")
 app.wsgi_app = ProxyFix(app.wsgi_app)
+# app.logger.level = logging.DEBUG
 
 auth = HTTPBasicAuth()
 is_cli = None
@@ -106,7 +109,9 @@ def get_uncategorized():
         before_str = request.args.get("before")
         if before_str:
             try:
-                before = datetime.fromisoformat(before_str)
+                localtz = pytz.timezone(application_config()['location'].get('TIMEZONE')) 
+                before = datetime.fromisoformat(before_str).astimezone(localtz)
+                app.logger.debug(f"fetching events before: {before.isoformat()}")
             except (TypeError, ValueError) as pe:
                 app.logger.debug(f"skipping 'before' parameter: {pe}")
 
@@ -115,9 +120,9 @@ def get_uncategorized():
             .where(EventObservation.lighting_type == 'daylight')
             .where(EventObservation.storage_local == True)
             .where(EventObservation.capture_time < before)
-            .where(EventObservation.id.notin_(select(EventClassification.id).distinct()))
+            .where(EventObservation.id.notin_(select(EventClassification.observation_id).distinct()))
             .order_by(desc(EventObservation.capture_time))
-            .limit(2)
+            .limit(10)
         )
 
         observations = session.query(EventObservation).from_statement(stmt)
