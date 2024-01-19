@@ -142,3 +142,4 @@ ALTER TABLE event_observations
 	ADD COLUMN IF NOT EXISTS weather_id BIGINT UNSIGNED,
 	ADD FOREIGN KEY (weather_id) REFERENCES weather(id);
 	
+DROP TABLE motion_events;

@@ -109,7 +109,7 @@ def get_uncategorized():
         before_str = request.args.get("before")
         if before_str:
             try:
-                localtz = pytz.timezone(application_config()['location'].get('TIMEZONE')) 
+                localtz = pytz.timezone(application_config()['location'].get('TIMEZONE'))
                 before = datetime.fromisoformat(before_str).astimezone(localtz)
                 app.logger.debug(f"fetching events before: {before.isoformat()}")
             except (TypeError, ValueError) as pe:
@@ -162,21 +162,6 @@ def classify():
         session.commit()
 
         return jsonify(newClassification.api_response_dict()), 201
-
-@app.route("/motions", methods=['POST'])
-@auth.login_required
-def create_motion_event():
-    input_dict = request.json
-
-    with TunneledConnection() as tc:
-        session = sqlalchemy.orm.Session(tc)
-
-        new_motion = MotionEvent(**input_dict)
-
-        session.add(new_motion)
-        session.commit()
-
-        return jsonify(new_motion.api_response_dict()), 201
 
 @app.route("/observations/", methods=['POST'])
 @app.route("/observations", methods=['POST'])

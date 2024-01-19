@@ -27,7 +27,7 @@ import pytz
 
 from .connection import application_config
 
-__all__ = ['MotionEvent', 'EventObservation', 'EventClassification', 'APIUser', 'Upload', 'Computation', 'JSONEncoder', 'Weather']
+__all__ = ['EventObservation', 'EventClassification', 'APIUser', 'Upload', 'Computation', 'JSONEncoder', 'Weather']
 
 config = application_config()
 
@@ -47,7 +47,7 @@ class JSONEncoder(json.JSONEncoder):
         if isinstance(o, datetime):
             return get_local_time_iso(o)
 
-        if type(o).__name__ in ['Computation', 'MotionEvent', 'EventObservation', 'EventClassification']:
+        if type(o).__name__ in ['Computation', 'EventObservation', 'EventClassification']:
 
             result = o.__dict__.copy()
             for k in o.__dict__.keys():
@@ -123,45 +123,6 @@ where id not in (select distinct object_id from uploads where object_class = 'Co
 order by c.computed_at desc
 """)
 
-class MotionEvent(Base):
-    __tablename__ = 'motion_events'
-    id = Column(BigInteger, primary_key=True)
-
-    frame = Column(BigInteger)
-    x = Column(Integer)
-    y = Column(Integer)
-    width = Column(Integer)
-    height = Column(Integer)
-    pixels = Column(Integer)
-    label_count = Column(Integer)
-
-    event_name = Column(String)
-    source = Column(String)
-    source_version = Column(String)
-
-    capture_time = None
-
-    def api_response_dict(self):
-        return {
-            'motion_event_id': self.id,
-            'event_name': self.event_name,
-            'frame': self.frame,
-            'x': self.x,
-            'y': self.y,
-            'width:': self.width,
-            'height': self.height,
-            'pixels': self.pixels,
-            'label_count': self.label_count }
-
-    def box(self):
-        return (
-            int(self.x - self.width/2),
-            int(self.y - self.height/2),
-            self.width,
-            self.height
-        )
-
-
 class Weather(Base):
     __tablename__ = 'weather'
     id: Mapped[int] = Column(BigInteger, primary_key=True)
@@ -213,11 +174,6 @@ class EventObservation(Base):
     lighting_type = Column(String)
 
     classifications = relationship("EventClassification", back_populates='observation')
-    # motions = relationship("MotionEvent", 
-    #                         foreign_keys=[event_name], 
-    #                         primaryjoin=lambda: EventObservation.event_name == MotionEvent.event_name,
-    #                         uselist=True, 
-    #                         backref="observation")
 
     # weather = relationship("Weather", foreign_keys=[id], primaryjoin=lambda: EventObservation.weather_id == Weather.id) 
     # weather_id : Mapped[int] = mapped_column(ForeignKey("weather.id"))
