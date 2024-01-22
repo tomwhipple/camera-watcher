@@ -296,6 +296,9 @@ class EventClassification(Base):
         self.__dict__.update(input)
         self.decision_time = datetime.now()
 
+    def __str__(self):
+        return self.label
+
     def api_response_dict(self):
         return {
             'classification_id': self.id,

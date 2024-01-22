@@ -6,7 +6,7 @@ import pytz
 import logging
 
 import sqlalchemy
-from sqlalchemy import text, select, desc
+from sqlalchemy import select, desc
 
 from datetime import datetime
 
