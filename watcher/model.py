@@ -274,7 +274,7 @@ def sunlight_from_time_for_location(timestamp, location):
     if lighting_type in ['noon', 'sunrise']:
         lighting_type = 'daylight'
     elif lighting_type in ['dawn', 'sunset']:
-        lighting_type = 'twighlight'
+        lighting_type = 'twilight'
     elif lighting_type in ['dusk', 'midnight']:
         lighting_type = 'night'    
 

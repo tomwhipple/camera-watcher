@@ -17,6 +17,8 @@ from rq import Queue, Retry
 from PIL import Image
 
 from werkzeug.middleware.proxy_fix import ProxyFix
+from logging.config import dictConfig
+import logging
 
 from watcher.model import *
 from watcher.connection import *
@@ -24,9 +26,21 @@ from watcher.lite_tasks import task_record_event, task_write_image
 
 query_dbtest_sql = "select count(*) from event_observations"
 
+dictConfig({
+    'version': 1,
+    'handlers': {'wsgi': {
+        'class': 'logging.StreamHandler',
+        'stream': 'ext://flask.logging.wsgi_errors_stream',
+    }},
+    'root': {
+        'level': 'INFO',
+        'handlers': ['wsgi'],
+    }
+})
+
 app = Flask("watcher")
 app.wsgi_app = ProxyFix(app.wsgi_app)
-# app.logger.level = logging.DEBUG
+app.logger.addHandler(logging.StreamHandler())
 
 auth = HTTPBasicAuth()
 is_cli = None
@@ -34,24 +48,23 @@ is_cli = None
 @app.before_request
 def log_before():
     app.logger.debug('Headers: %s', request.headers)
-#    app.logger.debug('Body: %s', request.get_data())
 
-@app.after_request
-def log_after(response):
-    app.logger.info(f"{response.status_code} - {request.url}")
+# @app.after_request
+# def log_after(response):
+#     app.logger.info(f"{response.status_code} - {request.url}")
 
-    return response
+#     return response
 
 @app.errorhandler(InternalServerError)
 def log_internal_error(e):
-#    app.logger.error('request body: %s', request.get_data())
+    app.logger.debug('request body: %s', request.get_data())
     app.logger.error(e)
 
     return "oops", 500
 
 @app.errorhandler(BadRequest)
 def log_bad_request(e):
-#    app.logger.error('request body: %s', request.get_data())
+    app.logger.debug('request body: %s', request.get_data())
     app.logger.error(e)
 
     return e, 400
@@ -117,7 +130,7 @@ def get_uncategorized():
 
         stmt = (
             select(EventObservation)
-            .where(EventObservation.lighting_type == 'daylight')
+            .where(EventObservation.lighting_type.in_(['daylight','twilight']))
             .where(EventObservation.storage_local == True)
             .where(EventObservation.capture_time < before)
             .where(EventObservation.id.notin_(select(EventClassification.observation_id).distinct()))

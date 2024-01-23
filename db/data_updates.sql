@@ -23,3 +23,5 @@ width*height as area
 from motion_events ) as t where t.area = 0);
 
 update event_observations set video_location = replace(video_location, '/data/video/', '') where video_location like '/data/video/%';
+
+UPDATE event_observations SET lighting_type='twilight' WHERE lighting_type='twighlight';

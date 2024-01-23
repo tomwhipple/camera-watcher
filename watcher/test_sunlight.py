@@ -11,7 +11,7 @@ def test_sunlight():
 	assert sunlight_from_time_for_location(wee_hours, austin) == 'night'
 
 	pre_dawn = datetime.fromisoformat('2022-03-30 07:10-05:00')
-	assert sunlight_from_time_for_location(pre_dawn, austin) == 'twighlight'
+	assert sunlight_from_time_for_location(pre_dawn, austin) == 'twilight'
 
 	dawn = datetime.fromisoformat('2022-03-30 07:30-05:00')
 	assert sunlight_from_time_for_location(dawn, austin) == 'daylight'
@@ -20,7 +20,7 @@ def test_sunlight():
 	assert sunlight_from_time_for_location(afternoon, austin) == 'daylight'
 
 	dusk = datetime.fromisoformat('2022-03-30 20:00-05:00')
-	assert sunlight_from_time_for_location(dusk, austin) == 'twighlight'
+	assert sunlight_from_time_for_location(dusk, austin) == 'twilight'
 
 	evening = datetime.fromisoformat('2022-03-30 20:30-05:00')
 	assert sunlight_from_time_for_location(evening, austin) == 'night'
