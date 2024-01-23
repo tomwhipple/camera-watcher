@@ -9,7 +9,7 @@ from PIL import Image
 from datetime import datetime, timedelta
 
 
-from rq import Connection, Worker
+from rq import Worker
 
 from .connection import application_config, TunneledConnection, redis_connection
 from .model import *

@@ -81,8 +81,6 @@ class EventVideo(object):
 
     def probe_file(self):
         try:
-            #print(f"PROBING FILE: {self.file}")
-            #print(f"PROBING FILE: {self.event.file_path()}")
             info = ffmpeg.probe(self.event.file_path())
 
             tries_remaining = 3
