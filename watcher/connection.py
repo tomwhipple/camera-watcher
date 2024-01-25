@@ -25,7 +25,8 @@ def application_config(section_name=None, config_variable=None):
 
     if not file or not os.access(file, os.R_OK):
         msg = f"couldn't read config file {file}"
-        raise Exception(msg)
+        print(msg)
+        exit(1)
 
     parser.read(file)
 

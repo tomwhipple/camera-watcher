@@ -12,12 +12,15 @@ import cv2 as cv
 import numpy as np
 from PIL import Image
 import ffmpeg
+import logging
 
 import sqlalchemy
-from sqlalchemy import select, desc
+from sqlalchemy import select
+
+from fastai.vision.all import load_learner
 
 from .connection import TunneledConnection, redis_connection, application_config
-from .model import EventObservation, Computation
+from .model import EventObservation, EventClassification, Computation
 
 from .image_functions import *
 from .lite_tasks import *
@@ -26,6 +29,9 @@ __all__ = ['EventVideo','task_save_significant_frame', 'run_video_queue']
 
 NUM_INITAL_FRAMES_TO_AVERAGE = 5
 DEFAULT_MAX_FRAMES_PER_CHUNK = 50
+
+logging.basicConfig(filename=(Path('log') / __name__).with_suffix(".log"),
+                    level=application_config('system', 'LOG_LEVEL').upper())
 
 shared_tunnel = None
 def get_shared_tunnel():
@@ -96,14 +102,11 @@ class EventVideo(object):
             self.duration = float(video_info['duration'])
 
         except KeyError as ke:
-            print(str(ke))
-
+            logging.error(str(ke))
             raise ke
 
         except Exception as e:
-            print(f"STDERR: {e.stderr}")
-            print(f"STDOUT: {e.stdout}")
-
+            logging.error(f"exception from ffmpeg:\nSTDERR: {e.stderr}\nSTDOUT: {e.stdout}")
             raise e 
 
     def load_frames(self):
@@ -198,7 +201,7 @@ def task_save_significant_frame(name):
             .where(Computation.success == True)
         )
         if len(prior_results.scalars().all()) > 0:
-            print(f"already computed task_save_significant_frame for {name}")
+            logging.info(f"already computed task_save_significant_frame for {name}")
             return
 
         comp = Computation(event_name=name, method_name='task_save_significant_frame')
@@ -207,7 +210,7 @@ def task_save_significant_frame(name):
 
             vid = EventVideo(name=name, session=session)
 
-            print(f"starting video analysis for {name} at {vid.file}")
+            logging.info(f"starting video analysis for {name} at {vid.file}")
 
             #option 1 - frame by frame.
             #sig_frame, num_frames, frame_img = find_sigificant_frame(str(vid.file))
@@ -228,8 +231,12 @@ def task_save_significant_frame(name):
             comp.result_file_location = str(img_relpath.parent)
             comp.success = True
 
-            queue = Queue('write_image', connection = redis_connection())
-            queue.enqueue(task_write_image, args=(img, str(img_relpath)), retry=Retry(max=3, interval=5*60))
+            ioqueue = Queue('write_image', connection=redis_connection())
+            ioqueue.enqueue(task_write_image, args=(img, str(img_relpath)), retry=Retry(max=1, interval=5*60))
+
+            predictqueue = Queue('prediction', connection=redis_connection())
+            predictqueue.enqueue(task_predict_still, args=(img_relpath, name))
+
 
         except Exception as e:
             result['error'] = json.dumps(str(e))
@@ -243,10 +250,40 @@ def task_save_significant_frame(name):
             session.add(comp)
             session.commit()
 
-        print(f"found frame {sig_frame} for {name}. Will store as {img_relpath}")
+        logging.info(f"found frame {sig_frame} for {name}. Will store as {img_relpath}")
         
-def run_video_queue(queues = ['event_video']):
+def run_video_queue(queues = ['event_video', 'prediction']):
     connection = get_shared_tunnel()
     with connection:
-        worker = Worker(queues, connection=redis_connection())
+        worker = Worker(queues, connection=redis_connection(), with_scheduler=True)
         worker.work()
+
+def predict_from_still(img_file: Path) -> (str, float):
+    model_file = Path(__file__).parent.parent / application_config('prediction','STILL_MODEL_FILE')
+    model = load_learner(model_file)
+
+    predicted_label, i, probs = model.predict(img_file)
+    probability = probs.tolist()[int(i)]
+    return (predicted_label, probability)
+    
+def task_predict_still(img_file, event_name):
+    img_file = Path(application_config('system','LOCAL_DATA_DIR')) / img_file
+
+    prediction, probability = predict_from_still(img_file)
+    logging.info(f"{event_name} is a {prediction} with probability {probability}")
+
+    with TunneledConnection() as tc:
+        session = sqlalchemy.orm.Session(tc)
+
+        stmt = select(EventObservation).where(EventObservation.event_name == event_name)
+        event = session.execute(stmt).scalar_one()
+
+        newClassification = EventClassification(
+            observation_id = event.id,
+            label = prediction,
+            confidence = probability,
+            decider = 'still_model'
+        )
+
+        session.add(newClassification)
+        session.commit()

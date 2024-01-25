@@ -24,6 +24,8 @@ from watcher.model import *
 from watcher.connection import *
 from watcher.lite_tasks import task_record_event, task_write_image
 
+DEFAULT_API_RESPONSE_PAGE_SIZE=10
+
 query_dbtest_sql = "select count(*) from event_observations"
 
 dictConfig({
@@ -33,7 +35,7 @@ dictConfig({
         'stream': 'ext://flask.logging.wsgi_errors_stream',
     }},
     'root': {
-        'level': 'INFO',
+        'level': application_config('system','LOG_LEVEL'),
         'handlers': ['wsgi'],
     }
 })
@@ -109,25 +111,7 @@ def recieve_batch():
 
     return 'ACCEPTED', 202
 
-@app.route("/uncategorized")
-@auth.login_required
-def get_uncategorized():
-    obs_out = []
-
-
-    with TunneledConnection() as tc:
-        session = sqlalchemy.orm.Session(tc)
-
-        before = datetime.now()
-        before_str = request.args.get("before")
-        if before_str:
-            try:
-                localtz = pytz.timezone(application_config()['location'].get('TIMEZONE'))
-                before = datetime.fromisoformat(before_str).astimezone(localtz)
-                app.logger.debug(f"fetching events before: {before.isoformat()}")
-            except (TypeError, ValueError) as pe:
-                app.logger.debug(f"skipping 'before' parameter: {pe}")
-
+def fetch_uncategorized(session, before: datetime.date=datetime.now(), limit: int=1) -> [EventObservation]:
         stmt = (
             select(EventObservation)
             .where(EventObservation.lighting_type.in_(['daylight','twilight']))
@@ -135,15 +119,37 @@ def get_uncategorized():
             .where(EventObservation.capture_time < before)
             .where(EventObservation.id.notin_(select(EventClassification.observation_id).distinct()))
             .order_by(desc(EventObservation.capture_time))
-            .limit(10)
+            .limit(limit)
         )
 
-        observations = session.query(EventObservation).from_statement(stmt)
+        return session.execute(stmt).scalars().all()
+        # import pdb; pdb.set_trace()
 
-        for o in observations:
-            obs_out.append(o.api_response_dict())
+        # retval = [] 
+        # for r in res:
+        #     retval.append(r)
+        # return retval
 
-    return api_response_for_context(obs_out)
+
+@app.route("/uncategorized")
+@auth.login_required
+def get_uncategorized():
+
+    before = datetime.now()
+    before_str = request.args.get("before")
+    if before_str:
+        try:
+            localtz = pytz.timezone(application_config()['location'].get('TIMEZONE'))
+            before = datetime.fromisoformat(before_str).astimezone(localtz)
+            app.logger.debug(f"fetching events before: {before.isoformat()}")
+        except (TypeError, ValueError) as pe:
+            app.logger.debug(f"skipping 'before' parameter: {pe}")
+
+    with TunneledConnection() as tc:
+        session = sqlalchemy.orm.Session(tc)
+        observations = fetch_uncategorized(session, before, DEFAULT_API_RESPONSE_PAGE_SIZE)
+
+        return api_response_for_context([o.api_response_dict() for o in observations])
 
 @app.route("/labels")
 @auth.login_required

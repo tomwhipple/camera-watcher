@@ -28,6 +28,8 @@ from watcher.lite_tasks import run_io_queues
 from watcher.video import run_video_queue, task_save_significant_frame
 from hardswitch import NetworkPowerSwitch
 
+import api
+
 config = application_config()
 logger = logging.getLogger(sys.argv[0])
 
@@ -202,6 +204,10 @@ def show_failed(sub_args=None):
         else:
             print(job_id, job.exc_info)
 
+def uncategorized(session, limit=0):
+    un = [r.api_response_dict() for r in api.fetch_uncategorized(session, limit=limit)]
+    print(json.dumps(un, indent=2))
+
 def main():
     parser = argparse.ArgumentParser(description='Utilites for watcher')
     parser.add_argument('action', choices=[
@@ -213,7 +219,7 @@ def main():
         'ioworker',
         'videoworker',
         'singlevideo',
-        'rm_night_videos',
+        'uncategorized',
         'pass'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
@@ -249,8 +255,8 @@ def main():
             run_io_queues()
         elif args.action == 'videoworker':
             run_video_queue()
-        elif args.action == 'rm_night_videos':
-            remove_night_videos(session)
+        elif args.action == 'uncategorized':
+            uncategorized(session, limit=args.limit)
         elif args.action == 'singlevideo':
             task_save_significant_frame(args.sub_args)
         else:

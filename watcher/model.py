@@ -9,14 +9,13 @@ import configparser
 import platform
 import time
 import subprocess
-
-import sqlalchemy
+import logging
 
 from datetime import datetime, timezone
 
 from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Enum, Boolean, Integer, text
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy.orm import relationship, Mapped
 
 from passlib.hash import pbkdf2_sha256
 
@@ -101,7 +100,7 @@ class Computation(Base):
         try:
             self.git_version = kwargs.get('git_version',subprocess.check_output('git describe --always --dirty --tags'.split()).decode('utf-8').strip())
         except Exception as e:
-            print("Intercepted an error: ", e)
+            logging.debug("Intercepted an error: ", e)
 
     def start_timer(self):
         self.computed_at = datetime.now(timezone.utc)
