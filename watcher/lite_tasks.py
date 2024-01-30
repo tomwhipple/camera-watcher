@@ -21,8 +21,8 @@ weather_window = timedelta(minutes=15)
 
 connection = TunneledConnection()
 
-logging.basicConfig(filename=(Path('log') / __name__).with_suffix(".log"),
-                    filemode="a", level=application_config('system', 'LOG_LEVEL').upper())
+logging.basicConfig(#filename=(Path('log') / __name__).with_suffix(".log"),
+                    level=application_config('system', 'LOG_LEVEL').upper())
 
 def task_write_image(img, img_relpath):
     basedir = Path(application_config('system','LOCAL_DATA_DIR'))
@@ -143,5 +143,5 @@ def test_find_weather_for_event():
 def run_io_queues(queues = ['record_event', 'write_image']):
 
     with connection:
-        worker = Worker(queues, connection=redis_connection(), with_scheduler=True)
-        worker.work()
+        worker = Worker(queues, connection=redis_connection())
+        worker.work(with_scheduler=True)

@@ -4,15 +4,10 @@ passlib>=1.7.4
 Flask-HTTPAuth>=4.5.0
 flup
 astral
-pytest
 requests
 redis
-rq
-numpy
-pyimage
-ffmpeg-python
+rq>=1.15.1
 requests-toolbelt>=0.9.1
-opencv-python>=1.23.2
 pytz
 pyuwsgi
-fastai
+pillow

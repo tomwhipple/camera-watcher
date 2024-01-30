@@ -1,6 +1,9 @@
 import os
 import sys
 import redis
+import logging
+from pathlib import Path
+
 from rq import Queue
 
 import configparser
@@ -12,7 +15,18 @@ from sshtunnel import SSHTunnelForwarder
 
 APPLICATION_CONFIG_FILE = 'application.cfg'
 
-__all__ = ['TunneledConnection','application_config','redis_connection']
+# APPLICATION_CONFIGS = [
+#     '/usr/local/etc/watcher.cfg',
+#     os.path.join(sys.path[0],'application.cfg'),
+#     os.path.join(sys.path[0],'watcher.cfg'),
+#     os.environ.get('WATCHER_CONFIG'),
+# ]
+
+def in_docker() -> bool:
+    return os.path.isfile('/.dockerenv') 
+
+
+__all__ = ['TunneledConnection','application_config','redis_connection','in_docker']
 
 def redis_connection():
     redis_host = os.environ.get('REDIS_HOST') or application_config('system','REDIS_HOST')
@@ -21,19 +35,22 @@ def redis_connection():
 def application_config(section_name=None, config_variable=None):
     parser = configparser.ConfigParser()
 
-    file = os.environ.get('WATCHER_CONFIG', os.path.join(sys.path[0],'application.cfg'))
+    file = os.environ.get('WATCHER_CONFIG', os.path.join(sys.path[0],APPLICATION_CONFIG_FILE))
 
     if not file or not os.access(file, os.R_OK):
-        msg = f"couldn't read config file {file}"
-        print(msg)
-        exit(1)
+        raise(f"couldn't read config file {file}")
+
+    # #configs = [c if c != None and os.path.isfile(c) for c in APPLICATION_CONFIGS]
+    # configs = [c for c in APPLICATION_CONFIGS if c != None]
 
     parser.read(file)
 
     if section_name:
         cfg = parser[section_name]
         if config_variable:
-            return cfg.get(config_variable, None)
+            cfg_value = cfg.get(config_variable, None)
+            #logging.debug(f"using {section_name}.{config_variable} = {cfg_value}")
+            return cfg_value
     else:
         cfg = parser
 
@@ -152,11 +169,13 @@ def get_ssh_tunnel(db_config):
     return tunnel
 
 def init_local_file_connection_engine(db_config):
+    if not os.path.isfile(db_config['db_name']):
+        raise FileNotFoundError(f"database file {db_config['db_name']} does not exist")
+
     pool = sqlalchemy.create_engine(
         sqlalchemy.engine.url.URL.create(
                 drivername=db_config['driver'],
                 database=db_config['db_name'],
-
         ),
         **db_config['connection_config']
     )

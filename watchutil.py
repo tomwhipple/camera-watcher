@@ -23,9 +23,10 @@ from rq.job import Job
 import pytz
 from astral import LocationInfo
 
-from watcher import *
-from watcher.lite_tasks import run_io_queues
-from watcher.video import run_video_queue, task_save_significant_frame
+import watcher
+from watcher import application_config, redis_connection, TunneledConnection
+from watcher.model import *
+
 from hardswitch import NetworkPowerSwitch
 
 import api
@@ -252,13 +253,16 @@ def main():
         elif args.action == 'failed':
             show_failed(args.sub_args)
         elif args.action == 'ioworker':
-            run_io_queues()
+            import watcher.lite_tasks
+            watcher.lite_tasks.run_io_queues()
         elif args.action == 'videoworker':
-            run_video_queue()
+            import watcher.video
+            watcher.video.run_video_queue()
         elif args.action == 'uncategorized':
             uncategorized(session, limit=args.limit)
         elif args.action == 'singlevideo':
-            task_save_significant_frame(args.sub_args)
+            import watcher.video
+            watcher.video.task_save_significant_frame(args.sub_args)
         else:
             print("No action specified.")
 

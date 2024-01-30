@@ -1,8 +1,10 @@
 __pycache__
 .DS_Store
 application.cfg
+watcher.cfg
 *.pem
 .ipynb_checkpoints
 pyenv-watcher
 *.sqlite3
 etc/motion/camera
+.venv

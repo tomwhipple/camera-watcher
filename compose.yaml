@@ -8,7 +8,7 @@ services:
 
   motion:
     build:
-      dockerfile: motion.Dockerfile
+      dockerfile: Dockerfile-motion
     command: motion -n
     depends_on:
       - redis
@@ -19,11 +19,26 @@ services:
     environment:
       - REDIS_URL=redis://redis
 
-  video-worker:
+  io:
+    build: 
+      context: .
+      dockerfile: Dockerfile-io
+    command: ./watchutil.py ioworker 2>&1 | tee -a /var/log/io-worker.log
+    depends_on:
+      - redis
+    volumes:
+      - ./data:/data
+      - ./log:/var/log
+      - ./etc:/usr/local/etc:ro
+    environment:
+      - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
+
+  video:
     #image: watcher
-    build: .
-    #command: rq worker -s event_video 2>&1 >> /var/log/video-worker.log
-    command: ./watchutil.py videoworker 2>&1 >> /var/log/video-worker.log
+    build: 
+      context: .
+      dockerfile: Dockerfile-video
+    command: ./watchutil.py videoworker 2>&1 | tee -a /var/log/video-worker.log
     depends_on:
       - redis
       - motion
@@ -31,17 +46,9 @@ services:
       - ./data:/data
       - ./log:/var/log
       - ./etc:/usr/local/etc:ro
+    environment:
+      - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
 
-  io-worker:
-    #image: watcher
-    build: .
-    command: ./watchutil.py ioworker 2>&1 >> /var/log/io-worker.log
-    depends_on:
-      - redis
-    volumes:
-      - ./data:/data
-      - ./log:/var/log
-      - ./etc:/usr/local/etc:ro
 
   # api:
   #   build: .

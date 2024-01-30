@@ -1,7 +1,6 @@
 
 from . import model
 from . import connection
-from . import training
 
 from .model import *
 from .connection import *

@@ -17,8 +17,6 @@ import logging
 import sqlalchemy
 from sqlalchemy import select
 
-from fastai.vision.all import load_learner
-
 from .connection import TunneledConnection, redis_connection, application_config
 from .model import EventObservation, EventClassification, Computation
 
@@ -30,7 +28,7 @@ __all__ = ['EventVideo','task_save_significant_frame', 'run_video_queue']
 NUM_INITAL_FRAMES_TO_AVERAGE = 5
 DEFAULT_MAX_FRAMES_PER_CHUNK = 50
 
-logging.basicConfig(filename=(Path('log') / __name__).with_suffix(".log"),
+logging.basicConfig(#filename=(Path('log') / __name__).with_suffix(".log"),
                     level=application_config('system', 'LOG_LEVEL').upper())
 
 shared_tunnel = None
@@ -235,7 +233,7 @@ def task_save_significant_frame(name):
             ioqueue.enqueue(task_write_image, args=(img, str(img_relpath)), retry=Retry(max=1, interval=5*60))
 
             predictqueue = Queue('prediction', connection=redis_connection())
-            predictqueue.enqueue(task_predict_still, args=(img_relpath, name))
+            predictqueue.enqueue('watcher.predict_still.task_predict_still', args=(img_relpath, name))
 
 
         except Exception as e:
@@ -252,38 +250,8 @@ def task_save_significant_frame(name):
 
         logging.info(f"found frame {sig_frame} for {name}. Will store as {img_relpath}")
         
-def run_video_queue(queues = ['event_video', 'prediction']):
+def run_video_queue(queues = ['event_video']):
     connection = get_shared_tunnel()
     with connection:
-        worker = Worker(queues, connection=redis_connection(), with_scheduler=True)
-        worker.work()
-
-def predict_from_still(img_file: Path) -> (str, float):
-    model_file = Path(__file__).parent.parent / application_config('prediction','STILL_MODEL_FILE')
-    model = load_learner(model_file)
-
-    predicted_label, i, probs = model.predict(img_file)
-    probability = probs.tolist()[int(i)]
-    return (predicted_label, probability)
-    
-def task_predict_still(img_file, event_name):
-    img_file = Path(application_config('system','LOCAL_DATA_DIR')) / img_file
-
-    prediction, probability = predict_from_still(img_file)
-    logging.info(f"{event_name} is a {prediction} with probability {probability}")
-
-    with TunneledConnection() as tc:
-        session = sqlalchemy.orm.Session(tc)
-
-        stmt = select(EventObservation).where(EventObservation.event_name == event_name)
-        event = session.execute(stmt).scalar_one()
-
-        newClassification = EventClassification(
-            observation_id = event.id,
-            label = prediction,
-            confidence = probability,
-            decider = 'still_model'
-        )
-
-        session.add(newClassification)
-        session.commit()
+        worker = Worker(queues, connection=redis_connection())
+        worker.work(with_scheduler=True)

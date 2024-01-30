@@ -1,0 +1,4 @@
+numpy
+ffmpeg-python
+requests-toolbelt>=0.9.1
+opencv-python>=1.23.2

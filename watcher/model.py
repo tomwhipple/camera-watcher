@@ -24,7 +24,7 @@ from astral import LocationInfo
 from astral.sun import sun
 import pytz
 
-from .connection import application_config
+from .connection import application_config, in_docker
 
 __all__ = ['EventObservation', 'EventClassification', 'APIUser', 'Upload', 'Computation', 'JSONEncoder', 'Weather']
 
@@ -97,10 +97,11 @@ class Computation(Base):
         self.__dict__.update(kwargs)
 
         self.host_info = kwargs.get('host_info',json.dumps(platform.uname()))
-        try:
-            self.git_version = kwargs.get('git_version',subprocess.check_output('git describe --always --dirty --tags'.split()).decode('utf-8').strip())
-        except Exception as e:
-            logging.debug("Intercepted an error: ", e)
+        if not in_docker():
+            try:
+                self.git_version = kwargs.get('git_version',subprocess.check_output('git describe --always --dirty --tags'.split()).decode('utf-8').strip())
+            except subprocess.CalledProcessError:
+                pass
 
     def start_timer(self):
         self.computed_at = datetime.now(timezone.utc)
