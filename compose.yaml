@@ -23,7 +23,7 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile-io
-    command: ./watchutil.py ioworker 2>&1 | tee -a /var/log/io-worker.log
+    command: ./watchutil.py ioworker
     depends_on:
       - redis
     volumes:
@@ -34,14 +34,12 @@ services:
       - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
 
   video:
-    #image: watcher
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile-video
-    command: ./watchutil.py videoworker 2>&1 | tee -a /var/log/video-worker.log
+    command: ./watchutil.py videoworker
     depends_on:
       - redis
-      - motion
     volumes:
       - ./data:/data
       - ./log:/var/log
@@ -49,6 +47,19 @@ services:
     environment:
       - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
 
+  predictor:
+    build:
+      context: .
+      dockerfile: Dockerfile-predictor
+    command: ./watchutil.py predictworker
+    depends_on:
+      - redis
+    volumes:
+      - ./data:/data
+      - ./log:/var/log
+      - ./etc:/usr/local/etc:ro
+    environment:
+      - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
 
   # api:
   #   build: .

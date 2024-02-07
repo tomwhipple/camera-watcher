@@ -141,7 +141,6 @@ def test_find_weather_for_event():
 
 
 def run_io_queues(queues = ['record_event', 'write_image']):
-
-    with connection:
+    with TunneledConnection():
         worker = Worker(queues, connection=redis_connection())
         worker.work(with_scheduler=True)

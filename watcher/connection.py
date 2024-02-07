@@ -35,10 +35,10 @@ def redis_connection():
 def application_config(section_name=None, config_variable=None):
     parser = configparser.ConfigParser()
 
-    file = os.environ.get('WATCHER_CONFIG', os.path.join(sys.path[0],APPLICATION_CONFIG_FILE))
+    file = os.environ.get('WATCHER_CONFIG', APPLICATION_CONFIG_FILE)
 
     if not file or not os.access(file, os.R_OK):
-        raise(f"couldn't read config file {file}")
+        raise FileNotFoundError(f"couldn't read config file {file}")
 
     # #configs = [c if c != None and os.path.isfile(c) for c in APPLICATION_CONFIGS]
     # configs = [c for c in APPLICATION_CONFIGS if c != None]

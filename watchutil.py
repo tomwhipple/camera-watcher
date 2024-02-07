@@ -219,8 +219,10 @@ def main():
         'failed',
         'ioworker',
         'videoworker',
+        'predictionworker',
         'singlevideo',
         'uncategorized',
+        'requeue-failed'
         'pass'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
@@ -258,6 +260,9 @@ def main():
         elif args.action == 'videoworker':
             import watcher.video
             watcher.video.run_video_queue()
+        elif args.action == 'predictionworker':
+            import watcher.predict_still
+            watcher.predict_still.run_prediction_queue()
         elif args.action == 'uncategorized':
             uncategorized(session, limit=args.limit)
         elif args.action == 'singlevideo':

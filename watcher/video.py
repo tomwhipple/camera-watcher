@@ -19,6 +19,7 @@ from sqlalchemy import select
 
 from .connection import TunneledConnection, redis_connection, application_config
 from .model import EventObservation, EventClassification, Computation
+from .predict_still import task_predict_still
 
 from .image_functions import *
 from .lite_tasks import *
@@ -251,7 +252,6 @@ def task_save_significant_frame(name):
         logging.info(f"found frame {sig_frame} for {name}. Will store as {img_relpath}")
         
 def run_video_queue(queues = ['event_video']):
-    connection = get_shared_tunnel()
-    with connection:
+    with TunneledConnection():
         worker = Worker(queues, connection=redis_connection())
         worker.work(with_scheduler=True)

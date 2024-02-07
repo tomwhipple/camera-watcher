@@ -1,16 +1,16 @@
-
 import logging
+from pathlib import Path
 
 import sqlalchemy
 from sqlalchemy import select
+from rq import Worker
 
-from pathlib import Path
 from fastai.vision.all import load_learner
 
-from .connection import TunneledConnection, application_config
+from .connection import TunneledConnection, application_config, redis_connection
 from.model import EventObservation, EventClassification
 
-__all__ = ['task_save_significant_frame']
+__all__ = ['task_predict_still']
 
 def predict_from_still(img_file: Path) -> (str, float):
     model_file = Path(__file__).parent.parent / application_config('prediction','STILL_MODEL_FILE')
@@ -41,3 +41,8 @@ def task_predict_still(img_file, event_name):
 
         session.add(newClassification)
         session.commit()
+
+def run_prediction_queue(queues = ['prediction']):
+    with TunneledConnection():
+        worker = Worker(queues, connection=redis_connection())
+        worker.work(with_scheduler=True)
