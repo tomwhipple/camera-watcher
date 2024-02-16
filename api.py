@@ -94,7 +94,7 @@ def test_database():
 
 @app.route("/batch", methods=['POST'])
 @auth.login_required
-def recieve_batch():
+def receive_batch():
     queue = Queue('record_event', connection = redis_connection())
     imgque = Queue('write_image', connection = redis_connection())
 
@@ -123,13 +123,6 @@ def fetch_uncategorized(session, before: datetime.date=datetime.now(), limit: in
         )
 
         return session.execute(stmt).scalars().all()
-        # import pdb; pdb.set_trace()
-
-        # retval = [] 
-        # for r in res:
-        #     retval.append(r)
-        # return retval
-
 
 @app.route("/uncategorized")
 @auth.login_required

@@ -8,7 +8,7 @@ from sqlalchemy import select
 from .connection import TunneledConnection
 from .model import *
 
-__all__ = ['get_labled_data', 'get_event_stills', 'get_event_labels', 'labled_as_csv']
+__all__ = ['get_labeled_data', 'get_event_stills', 'get_event_labels', 'labeled_as_csv']
 
 shared_session = None
 def get_shared_session() -> sqlalchemy.orm.Session:
@@ -18,15 +18,13 @@ def get_shared_session() -> sqlalchemy.orm.Session:
         shared_session = sqlalchemy.orm.Session(TunneledConnection())
     return shared_session
 
-
-
 def make_result_item(r) -> (pathlib.Path, str):
     if r[1].label.startswith('noise'):
         r[1].label = 'noise'
     return tuple([r[0].result_file_fullpath(), r[1].label])
 
 shared_data = None
-def get_labled_data() -> [(pathlib.Path, str)]:
+def get_labeled_data() -> [(pathlib.Path, str)]:
     global shared_data
     
     if shared_data == None:
@@ -49,10 +47,10 @@ def get_labled_data() -> [(pathlib.Path, str)]:
         
 
 def get_event_stills(p=None):
-    return map(lambda d: d[0].str(), get_labled_data())
+    return map(lambda d: d[0].str(), get_labeled_data())
 
 def get_event_labels(p=None):
-    return map(lambda d: d[1], get_labled_data())
+    return map(lambda d: d[1], get_labeled_data())
 
 def reset() -> None:
     global shared_session
@@ -61,9 +59,9 @@ def reset() -> None:
         shared_session.close()
     shared_session = None
 
-def labled_as_csv()-> pathlib.Path:
+def labeled_as_csv()-> pathlib.Path:
     reset()
-    data = get_labled_data()
+    data = get_labeled_data()
     
     with tempfile.NamedTemporaryFile(mode='w', delete=False) as tf:
         cw = csv.writer(tf, dialect='unix')
