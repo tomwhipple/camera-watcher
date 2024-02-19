@@ -39,7 +39,7 @@ def task_record_event(event_class, input_json_str):
     allowed_classes = ['EventObservation', 'Computation']
 
     if event_class not in allowed_classes:
-        logging.info(f"unknown event_class {event_class}. ignoring.")
+        logging.warning(f"unknown event_class {event_class}. ignoring.")
         return
 
     input_dict = json.loads(input_json_str)

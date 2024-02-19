@@ -1,15 +1,11 @@
 
-import sys
 import os
-import enum
 import json
 import random
 import string
-import configparser
 import platform
 import time
 import subprocess
-import logging
 
 from datetime import datetime, timezone
 
@@ -26,7 +22,7 @@ import pytz
 
 from .connection import application_config, in_docker
 
-__all__ = ['EventObservation', 'EventClassification', 'APIUser', 'Upload', 'Computation', 'JSONEncoder', 'Weather']
+__all__ = ['EventObservation', 'EventClassification', 'APIUser', 'Upload', 'Computation', 'JSONEncoder', 'Weather', 'LoadEventObservation']
 
 config = application_config()
 
@@ -155,6 +151,11 @@ class Weather(Base):
         self.wind_dir = input['wind'].get('deg')
         self.cloud_pct = input['clouds'].get('all')
 
+def LoadEventObservation(session, id_or_name):
+    if isinstance(id_or_name, int):
+        return session.query(EventObservation).get(id_or_name)
+    else:
+        return session.query(EventObservation).filter_by(event_name=id_or_name).first()
 
 class EventObservation(Base):
     __tablename__ = 'event_observations'
@@ -174,6 +175,7 @@ class EventObservation(Base):
     lighting_type = Column(String)
 
     classifications = relationship("EventClassification", back_populates='observation')
+    #computations = relationship("Computation", back_populates='observation')
 
     # weather = relationship("Weather", foreign_keys=[id], primaryjoin=lambda: EventObservation.weather_id == Weather.id) 
     # weather_id : Mapped[int] = mapped_column(ForeignKey("weather.id"))
@@ -212,6 +214,12 @@ class EventObservation(Base):
 
         camera_location = LocationInfo(self.scene_name, None, camera_timezone, lat, lng)
         self.lighting_type = input.get('lighting_type',sunlight_from_time_for_location(self.capture_time, camera_location))
+
+    def __str__(self):
+        return self.event_name
+    
+    def all_labels_as_string(self):
+        return ' & '.join(sorted(set(map(lambda c: 'noise' if c.label.startswith('noise') else c.label,self.classifications))))
 
     def boxes_for_frame(self, frame):
         boxes = []

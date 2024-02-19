@@ -24,7 +24,7 @@ def task_predict_still(img_file, event_name):
     img_file = Path(application_config('system','LOCAL_DATA_DIR')) / img_file
 
     prediction, probability = predict_from_still(img_file)
-    logging.info(f"{event_name} is a {prediction} with probability {probability}")
+    logging.info(f"{event_name} is {prediction} with probability {probability}")
 
     with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(tc)
@@ -36,7 +36,7 @@ def task_predict_still(img_file, event_name):
             observation_id = event.id,
             label = prediction,
             confidence = probability,
-            decider = 'still_model'
+            decider = 'still_image ' + application_config('prediction','STILL_MODEL_FILE')
         )
 
         session.add(newClassification)
