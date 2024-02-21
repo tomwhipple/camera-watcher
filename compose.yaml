@@ -5,6 +5,7 @@ services:
       - 6379:6379
     volumes:
       - ./etc:/usr/local/etc:ro
+    restart: always
 
   motion:
     build:
@@ -18,6 +19,7 @@ services:
       - ./etc:/usr/local/etc:ro
     environment:
       - REDIS_URL=redis://redis
+    restart: always
 
   io:
     build: 
@@ -32,6 +34,7 @@ services:
       - ./etc:/usr/local/etc:ro
     environment:
       - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
+    restart: always
 
   video:
     build:
@@ -67,9 +70,7 @@ services:
       context: .
       dockerfile: Dockerfile-io
     profiles: ["web"]
-    command: uwsgi --http :8000 --master -p 4 -w api:app
-    ports:
-      - 8000:8000
+    command: uwsgi --ini /usr/local/etc/uwsgi.ini
     volumes:
       - ./data:/data
       - ./log:/var/log
