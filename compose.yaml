@@ -48,6 +48,7 @@ services:
       - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
 
   predictor:
+    profiles: ["predictor"]
     build:
       context: .
       dockerfile: Dockerfile-predictor
@@ -60,27 +61,30 @@ services:
       - ./etc:/usr/local/etc:ro
     environment:
       - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
-
-  # api:
-  #   build: .
-  #   profiles: ["api"]
-  #   command: uwsgi --http 127.0.0.1:8000 --master -p 4 -w api:app
-  #   ports:
-  #     - 127.0.0.1:80:8000
-  #     #- 127.0.0.1:443:443
-  #   volumes:
-  #     - ./data:/data
-  #     - ./log:/var/log
-  #     - ./etc:/usr/local/etc:ro
+   
+  api:
+    build: 
+      context: .
+      dockerfile: Dockerfile-io
+    profiles: ["web"]
+    command: uwsgi --http :8000 --master -p 4 -w api:app
+    ports:
+      - 8000:8000
+    volumes:
+      - ./data:/data
+      - ./log:/var/log
+      - ./etc:/usr/local/etc:ro
+    environment:
+      - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
     
-  static-web:
+  web:
     image: nginx
     profiles: ["web"]
     volumes:
      - ./data/video:/data/video:ro
      - ./etc/nginx:/etc/nginx:ro
     ports:
-     - "8080:80"
+     - "80:80"
     environment:
      - NGINX_HOST=mira.local
      - NGINX_PORT=80
