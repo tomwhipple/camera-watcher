@@ -15,18 +15,11 @@ from sshtunnel import SSHTunnelForwarder
 
 APPLICATION_CONFIG_FILE = 'application.cfg'
 
-# APPLICATION_CONFIGS = [
-#     '/usr/local/etc/watcher.cfg',
-#     os.path.join(sys.path[0],'application.cfg'),
-#     os.path.join(sys.path[0],'watcher.cfg'),
-#     os.environ.get('WATCHER_CONFIG'),
-# ]
-
 def in_docker() -> bool:
     return os.path.isfile('/.dockerenv') 
 
 
-__all__ = ['TunneledConnection','application_config','redis_connection','in_docker']
+__all__ = ['TunneledConnection','application_config','redis_connection','in_docker', 'file_with_base_path']
 
 def redis_connection():
     redis_host = os.environ.get('REDIS_HOST') or application_config('system','REDIS_HOST')
@@ -56,6 +49,8 @@ def application_config(section_name=None, config_variable=None):
 
     return cfg
 
+def file_with_base_path(file):
+    return Path(application_config('system','LOCAL_DATA_DIR')) / file
 
 def get_db_config():
 
@@ -129,6 +124,9 @@ class TunneledConnection(object):
     def __enter__(self):
         return self.connect()
 
+    def __exit__(self, *args):
+        self.disconnect()
+
     def connect(self):
         if self.tunnel:
             self.tunnel.start()
@@ -147,10 +145,11 @@ class TunneledConnection(object):
         self.connection = self.engine.connect()
         return self.connection
 
-    def __exit__(self, *args):
+    def disconnect(self):
         self.connection.close()
-        if self.tunnel and self.connection.closed:
+        if self.tunnel and self.tunnel.is_active:
             self.tunnel.close()
+
 
 def get_config_val(cfg, key, default=None):
     return os.environ.get(key) or cfg.get(key) or default

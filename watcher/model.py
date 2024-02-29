@@ -9,7 +9,7 @@ import subprocess
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Enum, Boolean, Integer, text
+from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Enum, Boolean, Integer, text, select
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship, Mapped
 
@@ -22,7 +22,7 @@ import pytz
 
 from .connection import application_config, in_docker
 
-__all__ = ['EventObservation', 'EventClassification', 'APIUser', 'Upload', 'Computation', 'JSONEncoder', 'Weather', 'LoadEventObservation']
+__all__ = ['EventObservation', 'EventClassification', 'APIUser', 'Upload', 'Computation', 'JSONEncoder', 'Weather', 'LoadEventObservation', 'UniqueClassificationLabels']
 
 config = application_config()
 
@@ -219,7 +219,11 @@ class EventObservation(Base):
         return self.event_name
     
     def all_labels_as_string(self):
-        return ' & '.join(sorted(set(map(lambda c: 'noise' if c.label.startswith('noise') else c.label,self.classifications))))
+        return ' & '.join(sorted(self.all_labels()))
+
+    def all_labels(self): 
+        #return set(map(lambda c: 'noise' if c.label.startswith('noise') else c.label, self.classifications))
+        return set(['noise' if c.label.startswith('noise') else c.label for c in self.classifications])
 
     def boxes_for_frame(self, frame):
         boxes = []
@@ -316,6 +320,17 @@ class EventClassification(Base):
             'decision_time': self.decision_time.isoformat(),
             'confidence': self.confidence,
         }
+
+def UniqueClassificationLabels(session):
+    stmt = (select(EventClassification.label).distinct()
+        .where(EventClassification.is_deprecated == None)
+        .where(EventClassification.confidence == None)
+        .where(~EventClassification.label.contains(' & '))
+    )
+
+    results = session.execute(stmt).fetchall()
+    labels = sorted(set(['noise' if r[0].startswith('noise') else r[0] for r in results]))
+    return labels
 
 class APIUser(Base):
     __tablename__ = 'api_users'

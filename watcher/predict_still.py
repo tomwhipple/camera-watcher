@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from datetime import datetime
 
 import sqlalchemy
 from sqlalchemy import select
@@ -7,42 +8,74 @@ from rq import Worker
 
 from fastai.vision.all import load_learner
 
-from .connection import TunneledConnection, application_config, redis_connection
+from .connection import TunneledConnection, application_config, redis_connection, file_with_base_path
 from.model import EventObservation, EventClassification
 
 __all__ = ['task_predict_still']
 
-def predict_from_still(img_file: Path) -> (str, float):
+logging.basicConfig(level=application_config('system', 'LOG_LEVEL').upper())
+
+model = None
+
+def lazy_load_model():
+    global model
+
+    if model:
+        return model
+
     model_file = Path(__file__).parent.parent / application_config('prediction','STILL_MODEL_FILE')
     model = load_learner(model_file)
 
-    predicted_label, i, probs = model.predict(img_file)
-    probability = probs.tolist()[int(i)]
-    return (predicted_label, probability)
+
+#def predict_from_still(img_file: str) -> tuple[str, float]:
+def predict_from_still(img_file: str):
+    lazy_load_model()
+
+    predicted_label, hot, probs = model.predict(img_file)
+    
+    found_probs = {}
+    for i, b in enumerate(hot):
+        if b:
+            found_probs[model.dls.vocab[i]] = probs[i].item()
+
+    return predicted_label, found_probs
 
 def task_predict_still(img_file, event_name):
-    img_file = Path(application_config('system','LOCAL_DATA_DIR')) / img_file
+    img_file = file_with_base_path(img_file)
 
-    prediction, probability = predict_from_still(img_file)
-    logging.info(f"{event_name} is {prediction} with probability {probability}")
+    if not img_file.exists():
+        raise FileNotFoundError(f"file {img_file} does not exist")
 
-    with TunneledConnection() as tc:
-        session = sqlalchemy.orm.Session(tc)
+    try:
+        prediction, probability = predict_from_still(img_file)
+        logging.info(f"{event_name} is {prediction} with probability {probability}")
 
-        stmt = select(EventObservation).where(EventObservation.event_name == event_name)
-        event = session.execute(stmt).scalar_one()
+        with TunneledConnection() as tc:
+            session = sqlalchemy.orm.Session(tc)
 
-        newClassification = EventClassification(
-            observation_id = event.id,
-            label = prediction,
-            confidence = probability,
-            decider = 'still_image ' + application_config('prediction','STILL_MODEL_FILE')
-        )
+            stmt = select(EventObservation).where(EventObservation.event_name == event_name)
+            event = session.execute(stmt).scalar_one()
 
-        session.add(newClassification)
-        session.commit()
+            now = datetime.now()
+
+            for lbl, prob in probability.items():
+                newClassification = EventClassification(
+                    label = lbl,
+                    confidence = prob,
+                    decider = Path(application_config('prediction','STILL_MODEL_FILE')).name,
+                    decided_at = now
+                )
+                event.classifications.append(newClassification)
+
+            session.commit()
+    except sqlalchemy.exc.IntegrityError as ie:
+        logging.warning(f"ignoring duplicate prediction for {event_name}")
+    except Exception as e: 
+        logging.exception(f"error processing {img_file}: {e}")
+        raise e
 
 def run_prediction_queue(queues = ['prediction']):
-    with TunneledConnection():
-        worker = Worker(queues, connection=redis_connection())
-        worker.work(with_scheduler=True)
+    logging.info("running predictions with model " + application_config('prediction','STILL_MODEL_FILE'))
+
+    worker = Worker(queues, connection=redis_connection())
+    worker.work(with_scheduler=True)

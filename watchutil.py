@@ -187,7 +187,7 @@ def enque_event(session, event_names):
     from watcher.video import task_save_significant_frame
 
     for name in event_names: 
-        queue = Queue(connection=redis_connection())
+        queue = Queue(connection=redis_connection(),name='event_video')
         queue.enqueue(task_save_significant_frame,name)
 
 def show_failed(sub_args=None):

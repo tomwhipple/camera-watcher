@@ -55,7 +55,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile-predictor
-    command: ./watchutil.py predictworker
+    command: ./watchutil.py predictionworker
     depends_on:
       - redis
     volumes:

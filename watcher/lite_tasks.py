@@ -21,8 +21,7 @@ weather_window = timedelta(minutes=15)
 
 connection = TunneledConnection()
 
-logging.basicConfig(#filename=(Path('log') / __name__).with_suffix(".log"),
-                    level=application_config('system', 'LOG_LEVEL').upper())
+logging.basicConfig(level=application_config('system', 'LOG_LEVEL').upper())
 
 def task_write_image(img, img_relpath):
     basedir = Path(application_config('system','LOCAL_DATA_DIR'))
@@ -62,13 +61,14 @@ def task_record_event(event_class, input_json_str):
 
             logging.info(f"recorded {event_class} {new_event.id} - {new_event.event_name}")
 
-            if event_class == 'EventObservation' and new_event.weather_id == None:
-                set_weather_for_event(new_event.event_name)
+            # if event_class == 'EventObservation' and new_event.weather_id == None:
+            #     set_weather_for_event(new_event.event_name)
 
         except sqlalchemy.exc.IntegrityError as ie:
             session.rollback()
 
-            logging.warning(f"ignoring duplicate database entry: {ie._message} ({ie._sql_message}")
+            logging.warning(f"ignoring duplicate database entry: {ie._message} ({ie._sql_message}) - {ie.statement} {ie.params}")
+            
         except Exception as e:
             logging.error(e)
             raise e
@@ -104,7 +104,6 @@ def set_weather_for_event(event_name):
                 return 
             
             session.add(weather)
-            session.commit()
 
         event.weather_id = weather.id
         session.commit()

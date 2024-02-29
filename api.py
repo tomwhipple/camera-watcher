@@ -117,7 +117,7 @@ def fetch_uncategorized(session, before: datetime.date=datetime.now(), limit: in
             .where(EventObservation.lighting_type.in_(['daylight','twilight']))
             .where(EventObservation.storage_local == True)
             .where(EventObservation.capture_time < before)
-            .where(EventObservation.id.notin_(select(EventClassification.observation_id).distinct()))
+            .where(EventObservation.id.notin_(select(EventClassification.observation_id).where(EventClassification.confidence==None).distinct()))
             .order_by(desc(EventObservation.capture_time))
             .limit(limit)
         )
@@ -150,12 +150,7 @@ def get_labels():
     with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(tc)
 
-        stmt = select(EventClassification.label).distinct().where(EventClassification.is_deprecated == None)
-        labels = []
-        for l in session.execute(stmt).fetchall():
-            labels.append(l[0])
-
-        return jsonify(labels)
+        return jsonify(UniqueClassificationLabels(session))
 
 @app.route("/classify", methods=['POST'])
 @auth.login_required

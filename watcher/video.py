@@ -1,5 +1,3 @@
-
-
 import os
 import time
 import json
@@ -19,7 +17,6 @@ from sqlalchemy import select
 
 from .connection import TunneledConnection, redis_connection, application_config
 from .model import EventObservation, EventClassification, Computation
-from .predict_still import task_predict_still
 
 from .image_functions import *
 from .lite_tasks import *
@@ -29,8 +26,7 @@ __all__ = ['EventVideo','task_save_significant_frame', 'run_video_queue']
 NUM_INITAL_FRAMES_TO_AVERAGE = 5
 DEFAULT_MAX_FRAMES_PER_CHUNK = 50
 
-logging.basicConfig(#filename=(Path('log') / __name__).with_suffix(".log"),
-                    level=application_config('system', 'LOG_LEVEL').upper())
+logging.basicConfig(level=application_config('system', 'LOG_LEVEL').upper())
 
 shared_tunnel = None
 def get_shared_tunnel():
@@ -39,6 +35,9 @@ def get_shared_tunnel():
     if not shared_tunnel:
         shared_tunnel = TunneledConnection().connect()
     return shared_tunnel
+
+class FFMPEGError(Exception):
+    pass 
 
 class EventVideo(object):
     tunnel = None
@@ -105,8 +104,11 @@ class EventVideo(object):
             raise ke
 
         except Exception as e:
-            logging.error(f"exception from ffmpeg:\nSTDERR: {e.stderr}\nSTDOUT: {e.stdout}")
-            raise e 
+            logging.error(f"{str(e)} exception from ffmpeg:\nSTDERR: {e.stderr}\nSTDOUT: {e.stdout}")
+            if e.stderr.endswith(b'Invalid data found when processing input\n'):
+                raise FFMPEGError(f'Invalid data when probing {self.file}') from e
+            else:
+                raise e
 
     def load_frames(self):
         if not self.frames:
@@ -155,34 +157,34 @@ def find_background(cap, num_frames = NUM_INITAL_FRAMES_TO_AVERAGE):
 
     return np.median(buf, axis=0).astype(dtype=np.uint8), i
 
-def find_sigificant_frame(video_source):
+# def find_sigificant_frame(video_source):
 
-    cap = cv.VideoCapture(video_source,cv.CAP_FFMPEG)
+#     cap = cv.VideoCapture(video_source,cv.CAP_FFMPEG)
 
-    sig_frame_num = 0
-    sig_frame_sum = 0
-    sig_frame = None
+#     sig_frame_num = 0
+#     sig_frame_sum = 0
+#     sig_frame = None
 
-    bg, f_num = find_background(cap)
-    while cap.isOpened():
-        capture_success, frame = cap.read()
-        if not capture_success or frame is None: continue
+#     bg, f_num = find_background(cap)
+#     while cap.isOpened():
+#         capture_success, frame = cap.read()
+#         if not capture_success or frame is None: continue
 
-        f_num += 1
+#         f_num += 1
 
-        diff = cv.absdiff(frame, bg)
-        gray_diff = cv.cvtColor(diff, cv.COLOR_BGR2GRAY)
-        blurred = cv.morphologyEx(gray_diff, cv.MORPH_CLOSE, kern)
+#         diff = cv.absdiff(frame, bg)
+#         gray_diff = cv.cvtColor(diff, cv.COLOR_BGR2GRAY)
+#         blurred = cv.morphologyEx(gray_diff, cv.MORPH_CLOSE, kern)
 
-        _, thresh = cv.threshold(blurred, 128, 255, cv.THRESH_BINARY)
+#         _, thresh = cv.threshold(blurred, 128, 255, cv.THRESH_BINARY)
 
-        s = np.sum(thresh)
-        if s > sig_frame_sum:
-            sig_frame_sum = s
-            sig_frame_num = f_num
-            sig_frame = frame
+#         s = np.sum(thresh)
+#         if s > sig_frame_sum:
+#             sig_frame_sum = s
+#             sig_frame_num = f_num
+#             sig_frame = frame
 
-    return sig_frame_num, f_num, sig_frame
+#     return sig_frame_num, f_num, sig_frame
 
 def task_save_significant_frame(name):
     if isinstance(name, list):
@@ -198,58 +200,63 @@ def task_save_significant_frame(name):
             select(Computation).where(Computation.event_name == name)
             .where(Computation.method_name == 'task_save_significant_frame')
             .where(Computation.success == True)
-        )
-        if len(prior_results.scalars().all()) > 0:
+        ).scalars().all()
+        
+        if len(prior_results) > 0:
             logging.info(f"already computed task_save_significant_frame for {name}")
-            return
 
-        comp = Computation(event_name=name, method_name='task_save_significant_frame')
-        try: 
-            comp.start_timer()
+            comp = prior_results[0]
+            img_relpath = Path(comp.result_file_location) / comp.result_file
 
-            vid = EventVideo(name=name, session=session)
+        else:
+            comp = Computation(event_name=name, method_name='task_save_significant_frame')
+            try: 
+                comp.start_timer()
 
-            logging.info(f"starting video analysis for {name} at {vid.file}")
+                vid = EventVideo(name=name, session=session)
 
-            #option 1 - frame by frame.
-            #sig_frame, num_frames, frame_img = find_sigificant_frame(str(vid.file))
+                logging.info(f"starting video analysis for {name} at {vid.file}")
 
-            #option 2 - read frames with ffmpeg, then work on them
-            sig_frame = vid.most_significant_frame()
-            num_frames = vid.num_frames
-            frame_img = vid.frames[sig_frame,:,:,:]
+                #option 1 - frame by frame.
+                #sig_frame, num_frames, frame_img = find_sigificant_frame(str(vid.file))
 
-            result['most_significant_frame'] = sig_frame
-            result['number_of_frames'] = num_frames
-            result['duration'] = vid.duration
+                #option 2 - read frames with ffmpeg, then work on them
+                sig_frame = vid.most_significant_frame()
+                num_frames = vid.num_frames
+                frame_img = vid.frames[sig_frame,:,:,:]
 
-            img_relpath = Path(vid.event.video_location) / f"{name}_f{sig_frame}.jpg"
-            img = Image.fromarray(frame_img,mode='RGB')
+                result['most_significant_frame'] = sig_frame
+                result['number_of_frames'] = num_frames
+                result['duration'] = vid.duration
 
-            comp.result_file = img_relpath.name
-            comp.result_file_location = str(img_relpath.parent)
-            comp.success = True
+                img_relpath = Path(vid.event.video_location) / f"{name}_f{sig_frame}.jpg"
+                img = Image.fromarray(frame_img,mode='RGB')
 
-            ioqueue = Queue('write_image', connection=redis_connection())
-            ioqueue.enqueue(task_write_image, args=(img, str(img_relpath)), retry=Retry(max=1, interval=5*60))
+                comp.result_file = img_relpath.name
+                comp.result_file_location = str(img_relpath.parent)
+                comp.success = True
 
-            predictqueue = Queue('prediction', connection=redis_connection())
-            predictqueue.enqueue('watcher.predict_still.task_predict_still', args=(img_relpath, name))
+                ioqueue = Queue('write_image', connection=redis_connection())
+                ioqueue.enqueue(task_write_image, args=(img, str(img_relpath)), retry=Retry(max=1, interval=5*60))
 
+                logging.info(f"found frame {sig_frame} for {name}. Will store as {img_relpath}")
 
-        except Exception as e:
-            result['error'] = json.dumps(str(e))
-            comp.success = False
-            raise e
+            except Exception as e:
+                result['error'] = json.dumps(str(e))
+                comp.success = False
+                raise e
 
-        finally: 
-            comp.end_timer()
-            comp.result = json.dumps(result, sort_keys=True)
+            finally: 
+                comp.end_timer()
+                comp.result = json.dumps(result, sort_keys=True)
 
-            session.add(comp)
-            session.commit()
+                session.add(comp)
+                session.commit()
 
-        logging.info(f"found frame {sig_frame} for {name}. Will store as {img_relpath}")
+        logging.debug("enqueuing prediction for " + str(img_relpath))
+        predictqueue = Queue('prediction', connection=redis_connection())
+        predictqueue.enqueue('watcher.predict_still.task_predict_still', args=(str(img_relpath), name))
+
         
 def run_video_queue(queues = ['event_video']):
     with TunneledConnection():

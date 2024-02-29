@@ -17,6 +17,8 @@ __all__ = ['get_labeled_data', 'get_event_stills', 'get_event_labels', 'labeled_
 def make_result_item(r) -> (pathlib.Path, str):
     return tuple([r[0].result_file_fullpath(), r[2].all_labels_as_string()])
 
+
+
 def get_labeled_data(session) -> [(pathlib.Path, str)]:
     stmt = (select(Computation, EventClassification, EventObservation)
         .join(EventObservation, Computation.event_name == EventObservation.event_name)
