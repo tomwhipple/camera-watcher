@@ -24,7 +24,7 @@ import pytz
 from astral import LocationInfo
 
 import watcher
-from watcher import application_config, redis_connection, TunneledConnection
+from watcher import application_config, redis_connection, TunneledConnection, setup_logging
 from watcher.model import *
 
 from hardswitch import NetworkPowerSwitch
@@ -32,7 +32,7 @@ from hardswitch import NetworkPowerSwitch
 import api
 
 config = application_config()
-logger = logging.getLogger(sys.argv[0])
+logger = setup_logging()
 
 DEFAULT_WORKING_DIR = PurePath(config['system']['LOCAL_DATA_DIR']) or "data/video"
 
@@ -183,7 +183,7 @@ def batch_sync_to_remote(session):
         session.commit()
         logger.info(f"{resp.status_code} upload complete")
 
-def enque_event(session, event_names):
+def enqueue_event(session, event_names):
     from watcher.video import task_save_significant_frame
 
     for name in event_names: 
@@ -222,7 +222,8 @@ def main():
         'predictionworker',
         'singlevideo',
         'uncategorized',
-        'requeue-failed'
+        'requeue-failed',
+        'logtest',
         'pass'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
@@ -232,8 +233,8 @@ def main():
     parser.add_argument('sub_args', nargs='*')
 
     args = parser.parse_args()
-    logger.setLevel("DEBUG")
-    logger.addHandler(logging.StreamHandler(stream=sys.stdout))
+    # logger.setLevel("DEBUG")
+    # logger.addHandler(logging.StreamHandler(stream=sys.stdout))
     #fileHandler = logging.FileHandler('watcher_util.log')
     #fileHandler.setFormatter(logging.Formatter(fmt="%(asctime)s %(message)s"))
     #logger.addHandler(fileHandler)
@@ -251,7 +252,7 @@ def main():
         elif args.action == 'syncup':
             batch_sync_to_remote(session)
         elif args.action == 'enque':
-            enque_event(session, args.sub_args)
+            enqueue_event(session, args.sub_args)
         elif args.action == 'failed':
             show_failed(args.sub_args)
         elif args.action == 'ioworker':
@@ -268,6 +269,12 @@ def main():
         elif args.action == 'singlevideo':
             import watcher.video
             watcher.video.task_save_significant_frame(args.sub_args)
+        elif args.action == 'logtest':
+            from watcher import setup_logging
+            logger = setup_logging()
+            logger.fatal("This is a test of the emergency broadcast system")
+            logger.info("I'm informing you")
+            logger.debug("some useless details")
         else:
             print("No action specified.")
 

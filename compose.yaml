@@ -16,7 +16,6 @@ services:
     volumes:
       - ./data:/data
       - ./log:/var/log
-      - ./etc:/usr/local/etc:ro
     environment:
       - REDIS_URL=redis://redis
     restart: always
@@ -34,6 +33,7 @@ services:
       - ./etc:/usr/local/etc:ro
     environment:
       - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
+      - WATCHER_LOG_FILE=/var/log/watcher/ioworker.log
     restart: always
 
   video:
@@ -49,6 +49,7 @@ services:
       - ./etc:/usr/local/etc:ro
     environment:
       - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
+      - WATCHER_LOG_FILE=/var/log/watcher/videoworker.log
 
   predictor:
     profiles: ["predictor"]
@@ -64,6 +65,7 @@ services:
       - ./etc:/usr/local/etc:ro
     environment:
       - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
+      - WATCHER_LOG_FILE=/var/log/watcher/predictor.log
    
   api:
     build: 
@@ -77,6 +79,7 @@ services:
       - ./etc:/usr/local/etc:ro
     environment:
       - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
+      - WATCHER_LOG_FILE=/var/log/watcher/api.log
     
   web:
     image: nginx

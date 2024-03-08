@@ -1,4 +1,4 @@
-import logging
+#import logger
 from pathlib import Path
 from datetime import datetime
 
@@ -8,13 +8,15 @@ from rq import Worker
 
 from fastai.vision.all import load_learner
 
-from .connection import TunneledConnection, application_config, redis_connection, file_with_base_path
+from .connection import TunneledConnection, application_config, redis_connection, file_with_base_path 
 from.model import EventObservation, EventClassification
+
+from . import setup_logging
 
 __all__ = ['task_predict_still']
 
-logging.basicConfig(level=application_config('system', 'LOG_LEVEL').upper())
 
+logger = setup_logging()
 model = None
 
 def lazy_load_model():
@@ -26,8 +28,6 @@ def lazy_load_model():
     model_file = Path(__file__).parent.parent / application_config('prediction','STILL_MODEL_FILE')
     model = load_learner(model_file)
 
-
-#def predict_from_still(img_file: str) -> tuple[str, float]:
 def predict_from_still(img_file: str):
     lazy_load_model()
 
@@ -42,13 +42,14 @@ def predict_from_still(img_file: str):
 
 def task_predict_still(img_file, event_name):
     img_file = file_with_base_path(img_file)
+    logger.debug(f"predicting {img_file} for {event_name}")
 
     if not img_file.exists():
         raise FileNotFoundError(f"file {img_file} does not exist")
 
     try:
         prediction, probability = predict_from_still(img_file)
-        logging.info(f"{event_name} is {prediction} with probability {probability}")
+        logger.info(f"{event_name} is {prediction} with probability {probability}")
 
         with TunneledConnection() as tc:
             session = sqlalchemy.orm.Session(tc)
@@ -69,13 +70,13 @@ def task_predict_still(img_file, event_name):
 
             session.commit()
     except sqlalchemy.exc.IntegrityError as ie:
-        logging.warning(f"ignoring duplicate prediction for {event_name}")
+        logger.warning(f"ignoring duplicate prediction for {event_name}")
     except Exception as e: 
-        logging.exception(f"error processing {img_file}: {e}")
+        logger.exception(f"error processing {img_file}: {e}")
         raise e
 
 def run_prediction_queue(queues = ['prediction']):
-    logging.info("running predictions with model " + application_config('prediction','STILL_MODEL_FILE'))
+    logger.info("running predictions with model " + application_config('prediction','STILL_MODEL_FILE'))
 
     worker = Worker(queues, connection=redis_connection())
     worker.work(with_scheduler=True)

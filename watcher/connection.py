@@ -25,8 +25,12 @@ def redis_connection():
     redis_host = os.environ.get('REDIS_HOST') or application_config('system','REDIS_HOST')
     return redis.Redis(host=redis_host)
 
-def application_config(section_name=None, config_variable=None):
-    parser = configparser.ConfigParser()
+def application_config(section_name: str='', config_variable: str='') -> str:
+    envname = f"WATCHER_{section_name.upper()}_{config_variable.upper()}"
+
+    configval = os.environ.get(envname)
+    if configval:
+        return configval
 
     file = os.environ.get('WATCHER_CONFIG', APPLICATION_CONFIG_FILE)
 
@@ -36,6 +40,7 @@ def application_config(section_name=None, config_variable=None):
     # #configs = [c if c != None and os.path.isfile(c) for c in APPLICATION_CONFIGS]
     # configs = [c for c in APPLICATION_CONFIGS if c != None]
 
+    parser = configparser.ConfigParser()
     parser.read(file)
 
     if section_name:
@@ -43,11 +48,11 @@ def application_config(section_name=None, config_variable=None):
         if config_variable:
             cfg_value = cfg.get(config_variable, None)
             #logging.debug(f"using {section_name}.{config_variable} = {cfg_value}")
-            return cfg_value
+            return cfg_value or ''
     else:
         cfg = parser
 
-    return cfg
+    return cfg 
 
 def file_with_base_path(file):
     return Path(application_config('system','LOCAL_DATA_DIR')) / file

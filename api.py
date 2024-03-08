@@ -24,25 +24,32 @@ from watcher.model import *
 from watcher.connection import *
 from watcher.lite_tasks import task_record_event, task_write_image
 
+from watcher import setup_logging, application_config
+
 DEFAULT_API_RESPONSE_PAGE_SIZE=10
 
 query_dbtest_sql = "select count(*) from event_observations"
 
-dictConfig({
-    'version': 1,
-    'handlers': {'wsgi': {
-        'class': 'logging.StreamHandler',
-        'stream': 'ext://flask.logging.wsgi_errors_stream',
-    }},
-    'root': {
-        'level': application_config('system','LOG_LEVEL'),
-        'handlers': ['wsgi'],
-    }
-})
+# loglev = application_config('log','LEVEL')
+# assert loglev in ['DEBUG','INFO','WARNING','ERROR','CRITICAL'], f"Invalid log level: {loglev}"
+
+# dictConfig({
+#     'version': 1,
+#     'handlers': {'wsgi': {
+#         'class': 'logging.StreamHandler',
+#         'stream': 'ext://flask.logging.wsgi_errors_stream',
+#     }},
+#     'root': {
+#         'file': application_config('log','FILE'),
+#         'level': application_config('log','LEVEL'),
+#         'handlers': ['wsgi'],
+#     }
+# })
 
 app = Flask("watcher")
 app.wsgi_app = ProxyFix(app.wsgi_app)
-app.logger.addHandler(logging.StreamHandler())
+app.logger = setup_logging()
+
 
 auth = HTTPBasicAuth()
 is_cli = None

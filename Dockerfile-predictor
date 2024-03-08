@@ -1,0 +1,25 @@
+FROM python:3-bookworm
+
+## OS dependencies
+
+RUN apt-get update
+RUN apt-get -y install sqlite3 redis
+
+## python requirements
+WORKDIR /app
+COPY requirements-predictor.txt ./
+RUN python3 -m pip install -r requirements-predictor.txt
+
+COPY requirements-io.txt ./
+RUN python3 -m pip install -r requirements-io.txt
+
+
+## source dependencies
+
+WORKDIR /app
+
+RUN mkdir -p /app/camera-watcher
+WORKDIR /app/camera-watcher
+
+COPY *.py ./
+COPY watcher watcher/

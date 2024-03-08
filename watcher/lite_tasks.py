@@ -1,7 +1,6 @@
 import json
 import sqlalchemy
 import requests
-import logging
 
 from sqlalchemy import select
 from pathlib import Path
@@ -13,15 +12,15 @@ from rq import Worker
 
 from .connection import application_config, TunneledConnection, redis_connection
 from .model import *
+from . import setup_logging
 
 
 __all__ = ['task_write_image','task_record_event', 'run_io_queues']
 
 weather_window = timedelta(minutes=15)
-
 connection = TunneledConnection()
 
-logging.basicConfig(level=application_config('system', 'LOG_LEVEL').upper())
+logger = setup_logging()
 
 def task_write_image(img, img_relpath):
     basedir = Path(application_config('system','LOCAL_DATA_DIR'))
@@ -30,7 +29,7 @@ def task_write_image(img, img_relpath):
     fullpath.parent.mkdir(parents=True, exist_ok=True)
 
     img.save(str(fullpath), quality=85)
-    logging.info(f"wrote {fullpath}")
+    logger.info(f"wrote {fullpath}")
 
 def task_record_event(event_class, input_json_str):
     global connection
@@ -38,7 +37,7 @@ def task_record_event(event_class, input_json_str):
     allowed_classes = ['EventObservation', 'Computation']
 
     if event_class not in allowed_classes:
-        logging.warning(f"unknown event_class {event_class}. ignoring.")
+        logger.warning(f"unknown event_class {event_class}. ignoring.")
         return
 
     input_dict = json.loads(input_json_str)
@@ -46,7 +45,7 @@ def task_record_event(event_class, input_json_str):
 
     filetype = input_dict.get('filetype')
     if filetype and int(filetype) != 8:
-        logging.warning(f"video files must be mp4 and not debug ({input_dict.get('video_fullpath')}). ignoring.")
+        logger.warning(f"video files must be mp4 and not debug ({input_dict.get('video_fullpath')}). ignoring.")
         return
 
     eventClass = globals()[event_class]
@@ -59,7 +58,7 @@ def task_record_event(event_class, input_json_str):
             session.add(new_event)
             session.commit()
 
-            logging.info(f"recorded {event_class} {new_event.id} - {new_event.event_name}")
+            logger.info(f"recorded {event_class} {new_event.id} - {new_event.event_name}")
 
             # if event_class == 'EventObservation' and new_event.weather_id == None:
             #     set_weather_for_event(new_event.event_name)
@@ -67,10 +66,10 @@ def task_record_event(event_class, input_json_str):
         except sqlalchemy.exc.IntegrityError as ie:
             session.rollback()
 
-            logging.warning(f"ignoring duplicate database entry: {ie._message} ({ie._sql_message}) - {ie.statement} {ie.params}")
+            logger.warning(f"ignoring duplicate database entry: {ie._message} ({ie._sql_message}) - {ie.statement} {ie.params}")
             
         except Exception as e:
-            logging.error(e)
+            logger.error(e)
             raise e
 
 
@@ -99,7 +98,7 @@ def set_weather_for_event(event_name):
             weather = fetch_weather() 
 
             if weather and (weather.valid_at < earliest_weather or weather.valid_at > latest_weather):
-                logging.warn(f"got weather for {weather.valid_at.isoformat()} but event was at {event.capture_time.isoformat()}")
+                logger.warn(f"got weather for {weather.valid_at.isoformat()} but event was at {event.capture_time.isoformat()}")
                 session.rollback()
                 return 
             
@@ -128,7 +127,7 @@ def test_find_weather_for_event():
 
         example_event_name = examp.event_name
 
-        logging.debug(f"using event {example_event_name} from {datetime.now() - examp.capture_time} ago")
+        logger.debug(f"using event {example_event_name} from {datetime.now() - examp.capture_time} ago")
         set_weather_for_event(example_event_name)
 
     # with TunneledConnection() as tc:

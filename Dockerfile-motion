@@ -25,3 +25,4 @@ RUN make -j 16 install
 WORKDIR /app
 RUN python3 -m pip install rq
 
+COPY ./etc/motion /usr/local/etc/motion

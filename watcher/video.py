@@ -10,7 +10,6 @@ import cv2 as cv
 import numpy as np
 from PIL import Image
 import ffmpeg
-import logging
 
 import sqlalchemy
 from sqlalchemy import select
@@ -26,7 +25,8 @@ __all__ = ['EventVideo','task_save_significant_frame', 'run_video_queue']
 NUM_INITAL_FRAMES_TO_AVERAGE = 5
 DEFAULT_MAX_FRAMES_PER_CHUNK = 50
 
-logging.basicConfig(level=application_config('system', 'LOG_LEVEL').upper())
+from . import setup_logging
+logger = setup_logging()
 
 shared_tunnel = None
 def get_shared_tunnel():
@@ -64,8 +64,11 @@ class EventVideo(object):
             self.session = sqlalchemy.orm.Session(self.get_tunnel())
         return self.session
     
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+    # def __init__(self, **kwargs):
+    #     self.__dict__.update(kwargs)
+    def __init__(self, session=None, name=None):
+        self.session = session
+        self.name = name
 
         stmt = select(EventObservation).where(EventObservation.event_name == self.name)
         session = self.get_session()
@@ -100,11 +103,11 @@ class EventVideo(object):
             self.duration = float(video_info['duration'])
 
         except KeyError as ke:
-            logging.error(str(ke))
+            logger.error(str(ke))
             raise ke
 
         except Exception as e:
-            logging.error(f"{str(e)} exception from ffmpeg:\nSTDERR: {e.stderr}\nSTDOUT: {e.stdout}")
+            logger.error(f"{str(e)} exception from ffmpeg:\nSTDERR: {e.stderr}\nSTDOUT: {e.stdout}")
             if e.stderr.endswith(b'Invalid data found when processing input\n'):
                 raise FFMPEGError(f'Invalid data when probing {self.file}') from e
             else:
@@ -203,7 +206,7 @@ def task_save_significant_frame(name):
         ).scalars().all()
         
         if len(prior_results) > 0:
-            logging.info(f"already computed task_save_significant_frame for {name}")
+            logger.info(f"already computed task_save_significant_frame for {name}")
 
             comp = prior_results[0]
             img_relpath = Path(comp.result_file_location) / comp.result_file
@@ -215,7 +218,7 @@ def task_save_significant_frame(name):
 
                 vid = EventVideo(name=name, session=session)
 
-                logging.info(f"starting video analysis for {name} at {vid.file}")
+                logger.info(f"starting video analysis for {name} at {vid.file}")
 
                 #option 1 - frame by frame.
                 #sig_frame, num_frames, frame_img = find_sigificant_frame(str(vid.file))
@@ -239,7 +242,7 @@ def task_save_significant_frame(name):
                 ioqueue = Queue('write_image', connection=redis_connection())
                 ioqueue.enqueue(task_write_image, args=(img, str(img_relpath)), retry=Retry(max=1, interval=5*60))
 
-                logging.info(f"found frame {sig_frame} for {name}. Will store as {img_relpath}")
+                logger.info(f"found frame {sig_frame} for {name}. Will store as {img_relpath}")
 
             except Exception as e:
                 result['error'] = json.dumps(str(e))
@@ -253,11 +256,10 @@ def task_save_significant_frame(name):
                 session.add(comp)
                 session.commit()
 
-        logging.debug("enqueuing prediction for " + str(img_relpath))
         predictqueue = Queue('prediction', connection=redis_connection())
-        predictqueue.enqueue('watcher.predict_still.task_predict_still', args=(str(img_relpath), name))
+        job = predictqueue.enqueue('watcher.predict_still.task_predict_still', args=(str(img_relpath), name))
+        logger.debug(f"enqueuing prediction for {img_relpath} as {job.id}")
 
-        
 def run_video_queue(queues = ['event_video']):
     with TunneledConnection():
         worker = Worker(queues, connection=redis_connection())
