@@ -30,7 +30,6 @@ services:
     volumes:
       - ./data:/data
       - ./log:/var/log
-      - ./etc:/usr/local/etc:ro
     environment:
       - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
       - WATCHER_LOG_FILE=/var/log/watcher/ioworker.log
@@ -46,10 +45,10 @@ services:
     volumes:
       - ./data:/data
       - ./log:/var/log
-      - ./etc:/usr/local/etc:ro
     environment:
       - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
       - WATCHER_LOG_FILE=/var/log/watcher/videoworker.log
+    restart: always
 
   predictor:
     profiles: ["predictor", "all"]
@@ -62,10 +61,10 @@ services:
     volumes:
       - ./data:/data
       - ./log:/var/log
-      - ./etc:/usr/local/etc:ro
     environment:
       - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
       - WATCHER_LOG_FILE=/var/log/watcher/predictor.log
+    restart: always
    
   api:
     build: 
@@ -76,10 +75,10 @@ services:
     volumes:
       - ./data:/data
       - ./log:/var/log
-      - ./etc:/usr/local/etc:ro
     environment:
       - WATCHER_CONFIG=/usr/local/etc/watcher.cfg
       - WATCHER_LOG_FILE=/var/log/watcher/api.log
+    restart: always
     
   web:
     image: nginx
@@ -92,3 +91,4 @@ services:
     environment:
      - NGINX_HOST=mira.local
      - NGINX_PORT=80
+    restart: always

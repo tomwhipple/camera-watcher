@@ -20,9 +20,7 @@ WORKDIR /app/camera-watcher
 COPY *.py ./
 COPY watcher watcher/
 
-## API support
-#COPY _watcher.fcgi ./
-
+COPY ./etc/watcher.cfg /usr/local/etc/watcher.cfg
 
 ## Make a self signed cert for local use
 # RUN openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes \
