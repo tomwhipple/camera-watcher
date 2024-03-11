@@ -69,7 +69,7 @@ services:
   api:
     build: 
       context: .
-      dockerfile: Dockerfile-io
+      dockerfile: Dockerfile-api
     profiles: ["web", "all"]
     command: uwsgi --ini /usr/local/etc/uwsgi.ini
     volumes:
