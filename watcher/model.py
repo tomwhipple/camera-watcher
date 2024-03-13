@@ -1,77 +1,27 @@
 
-import os
 import json
-import random
-import string
 import platform
 import time
 import subprocess
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Enum, Boolean, Integer, text, select
+from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Boolean, Integer, text, select
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import relationship, Mapped
-
-from passlib.hash import pbkdf2_sha256
+from sqlalchemy.orm import relationship
 
 from pathlib import Path
 from astral import LocationInfo
-from astral.sun import sun
 import pytz
 
+from .output import get_local_time_iso
 from .connection import application_config, in_docker
+from .outdoors import sunlight_from_time_for_location
 
-__all__ = ['EventObservation', 'EventClassification', 'APIUser', 'Upload', 'Computation', 'JSONEncoder', 'Weather', 'LoadEventObservation', 'UniqueClassificationLabels']
+__all__ = ['EventObservation', 'EventClassification', 'LoadEventObservation', 'UniqueClassificationLabels']
 
 config = application_config()
-
-BASE_STATIC_URL=os.environ.get('BASE_STATIC_PUBLIC_URL') or config['system'].get('BASE_STATIC_PUBLIC_URL')
-LOCAL_DATA_DIR=os.environ.get('LOCAL_DATA_DIR') or config['system'].get('LOCAL_DATA_DIR') 
-
 Base = declarative_base()
-
-def get_local_time_iso(a_time):
-    tz = pytz.timezone(config["location"].get('TIMEZONE'))
-    with_tz = tz.localize(a_time)
-    return with_tz.isoformat()
-
-class JSONEncoder(json.JSONEncoder):
-    def default(self, o):
-
-        if isinstance(o, datetime):
-            return get_local_time_iso(o)
-
-        if type(o).__name__ in ['Computation', 'EventObservation', 'EventClassification']:
-
-            result = o.__dict__.copy()
-            for k in o.__dict__.keys():
-                if k[0] == '_':
-                    del result[k]
-                elif isinstance(result[k], datetime):
-                    result[k] = get_local_time_iso(result[k])
-
-            return result
-
-        return json.JSONEncoder.default(self,o)
-
-class Upload(Base):
-    __tablename__ = 'uploads'
-    id = Column(BigInteger, primary_key=True)
-    sync_at = Column(DateTime)
-    object_class = Column(String)
-    object_id = Column(BigInteger)
-    http_status = Column(Integer)
-    upload_batch = Column(String)
-
-    def __init__(self, **input):
-        self.__dict__.update(input)
-        self.sync_at = datetime.now(timezone.utc)
-
-        event = input.get('event') or input.get('object')
-        if event:
-            self.object_id = event.id
-            self.object_class = type(event).__name__
 
 class Computation(Base):
     __tablename__ = 'computations'
@@ -109,7 +59,7 @@ class Computation(Base):
     def result_file_fullpath(self):
         if not self.result_file:
             return None
-        return Path(LOCAL_DATA_DIR) / self.result_file_location / self.result_file
+        return application_config('system','LOCAL_DAT_DIR') / self.result_file_location / self.result_file
 
     def sync_select():
         return text("""
@@ -119,37 +69,6 @@ where id not in (select distinct object_id from uploads where object_class = 'Co
 order by c.computed_at desc
 """)
 
-class Weather(Base):
-    __tablename__ = 'weather'
-    id: Mapped[int] = Column(BigInteger, primary_key=True)
-    valid_at = Column(DateTime)
-    valid_at_tz_offset_min = Column(Integer)
-    description = Column(String) 
-    temp_c = Column(Float)
-    feels_like_c = Column(Float)
-    temp_min_c = Column(Float)
-    temp_max_c = Column(Float)
-    pressure_hpa = Column(Integer)
-    visibility = Column(Integer)
-    humid_pct = Column(Integer)
-    wind_speed = Column(Float)
-    wind_dir = Column(Integer)
-    cloud_pct = Column(Integer)
-
-    def __init__(self, **input): 
-        self.description = input['weather'][0].get('description')
-        self.valid_at = datetime.fromtimestamp(input.get('dt'))
-        self.valid_at_tz_offset_min = input.get('timezone') / 60
-        self.temp_c = input['main'].get('temp')
-        self.feels_like_c = input['main'].get('feels_like')
-        self.temp_min_c = input['main'].get('temp_min')
-        self.temp_max_c = input['main'].get('temp_max')
-        self.pressure_hpa = input['main'].get('pressure')
-        self.humid_pct = input['main'].get('humidity')
-        self.visibility = input.get('visibility')
-        self.wind_speed = input['wind'].get('speed')
-        self.wind_dir = input['wind'].get('deg')
-        self.cloud_pct = input['clouds'].get('all')
 
 def LoadEventObservation(session, id_or_name):
     if isinstance(id_or_name, int):
@@ -192,7 +111,7 @@ class EventObservation(Base):
         camera_location = LocationInfo()
 
         video_fullpath = input.get('video_fullpath')
-        local_root = input.get('video_root', LOCAL_DATA_DIR)
+        local_root = input.get('video_root', application_config('system', 'LOCAL_DATA_DIR'))
 
         if video_fullpath:
             p = Path(video_fullpath)
@@ -242,7 +161,7 @@ class EventObservation(Base):
         }
 
     def video_url(self):
-        return BASE_STATIC_URL + '/' + self.video_location + '/' + self.video_file
+        return application_config('system','BASE_STATIC_PUBLIC_URL') + '/' + self.video_location + '/' + self.video_file
 
     def upload_dict(self):
         return {
@@ -258,7 +177,7 @@ class EventObservation(Base):
         }
 
     def file_path(self):
-        fullpath = Path(LOCAL_DATA_DIR)
+        fullpath = application_config('system','LOCAL_DATA_DIR')
         if self.video_location:
             fullpath = fullpath / self.video_location / self.video_file
         else:
@@ -273,24 +192,6 @@ from event_observations eo
 where id not in (select distinct object_id from uploads where object_class = 'EventObservation' and http_status < 400)
 order by eo.capture_time desc
 """)
-
-def sunlight_from_time_for_location(timestamp, location):
-    lighting_type = 'midnight'
-    time_occurs = prev_occurs = datetime(1970,1,1).astimezone()
-
-    for this_lighting_type, this_time_occurs in sun(location.observer, date=timestamp).items():
-        if timestamp > prev_occurs and timestamp >= this_time_occurs:
-            prev_occurs = this_time_occurs
-            lighting_type = this_lighting_type
-
-    if lighting_type in ['noon', 'sunrise']:
-        lighting_type = 'daylight'
-    elif lighting_type in ['dawn', 'sunset']:
-        lighting_type = 'twilight'
-    elif lighting_type in ['dusk', 'midnight']:
-        lighting_type = 'night'    
-
-    return lighting_type   
 
 class EventClassification(Base):
     __tablename__ = 'event_classifications'
@@ -332,17 +233,3 @@ def UniqueClassificationLabels(session):
     labels = sorted(set(['noise' if r[0].startswith('noise') else r[0] for r in results]))
     return labels
 
-class APIUser(Base):
-    __tablename__ = 'api_users'
-    id = Column(BigInteger, primary_key=True)
-    username = Column(String(128),index = True)
-    key_hash = Column(String(256))
-
-    def reset_key(self):
-        newkey = ''.join(random.choice(string.ascii_letters + string.digits) for i in range(16))
-        self.key_hash = pbkdf2_sha256.hash(newkey)
-
-        return newkey
-
-    def verify_key(self, input_str):
-        return pbkdf2_sha256.verify(input_str, self.key_hash)

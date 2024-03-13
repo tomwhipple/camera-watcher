@@ -195,70 +195,61 @@ def task_save_significant_frame(name):
     
     with TunneledConnection() as tc:
 
-        # HACK: rq does a terrible job ensuring jobs only run once. 
-        result = {}
         session = sqlalchemy.orm.Session(tc)
+        comp = Computation(event_name=name, method_name='task_save_significant_frame')
 
-        prior_results = session.execute(
-            select(Computation).where(Computation.event_name == name)
-            .where(Computation.method_name == 'task_save_significant_frame')
-            .where(Computation.success == True)
-        ).scalars().all()
-        
-        if len(prior_results) > 0:
-            logger.info(f"already computed task_save_significant_frame for {name}")
+        result = {}
+        write_job = None
+        try: 
+            comp.start_timer()
 
-            comp = prior_results[0]
-            img_relpath = Path(comp.result_file_location) / comp.result_file
+            vid = EventVideo(name=name, session=session)
 
-        else:
-            comp = Computation(event_name=name, method_name='task_save_significant_frame')
-            try: 
-                comp.start_timer()
+            logger.info(f"starting video analysis for {name} at {vid.file}")
 
-                vid = EventVideo(name=name, session=session)
+            #option 1 - frame by frame.
+            #sig_frame, num_frames, frame_img = find_sigificant_frame(str(vid.file))
 
-                logger.info(f"starting video analysis for {name} at {vid.file}")
+            #option 2 - read frames with ffmpeg, then work on them
+            sig_frame = vid.most_significant_frame()
+            num_frames = vid.num_frames
+            frame_img = vid.frames[sig_frame,:,:,:]
 
-                #option 1 - frame by frame.
-                #sig_frame, num_frames, frame_img = find_sigificant_frame(str(vid.file))
+            result['most_significant_frame'] = sig_frame
+            result['number_of_frames'] = num_frames
+            result['duration'] = vid.duration
 
-                #option 2 - read frames with ffmpeg, then work on them
-                sig_frame = vid.most_significant_frame()
-                num_frames = vid.num_frames
-                frame_img = vid.frames[sig_frame,:,:,:]
+            img_relpath = Path(vid.event.video_location) / f"{name}_f{sig_frame}.jpg"
+            img = Image.fromarray(frame_img,mode='RGB')
 
-                result['most_significant_frame'] = sig_frame
-                result['number_of_frames'] = num_frames
-                result['duration'] = vid.duration
+            comp.result_file = img_relpath.name
+            comp.result_file_location = str(img_relpath.parent)
+            comp.success = True
 
-                img_relpath = Path(vid.event.video_location) / f"{name}_f{sig_frame}.jpg"
-                img = Image.fromarray(frame_img,mode='RGB')
+            io_queue = Queue('write_image', connection=redis_connection())
+            write_job = io_queue.enqueue(task_write_image, args=(img, str(img_relpath)), 
+                             retry=Retry(max=3, interval=5*60))
 
-                comp.result_file = img_relpath.name
-                comp.result_file_location = str(img_relpath.parent)
-                comp.success = True
+            logger.info(f"found frame {sig_frame} for {name}. Will store as {img_relpath}")
 
-                ioqueue = Queue('write_image', connection=redis_connection())
-                ioqueue.enqueue(task_write_image, args=(img, str(img_relpath)), retry=Retry(max=1, interval=5*60))
+        except Exception as e:
+            result['error'] = json.dumps(str(e))
+            comp.success = False
+            raise e
 
-                logger.info(f"found frame {sig_frame} for {name}. Will store as {img_relpath}")
+        finally: 
+            comp.end_timer()
+            comp.result = json.dumps(result, sort_keys=True)
 
-            except Exception as e:
-                result['error'] = json.dumps(str(e))
-                comp.success = False
-                raise e
+            session.add(comp)
+            session.commit()
 
-            finally: 
-                comp.end_timer()
-                comp.result = json.dumps(result, sort_keys=True)
-
-                session.add(comp)
-                session.commit()
-
-        predictqueue = Queue('prediction', connection=redis_connection())
-        job = predictqueue.enqueue('watcher.predict_still.task_predict_still', args=(str(img_relpath), name))
-        logger.debug(f"enqueuing prediction for {img_relpath} as {job.id}")
+        predict_queue = Queue('prediction', connection=redis_connection())
+        job = predict_queue.enqueue('watcher.predict_still.task_predict_still', 
+                                    depends_on=write_job,
+                                    args=(str(img_relpath), name),
+                                    retry=Retry(max=1, interval=17*60))
+        logger.debug(f"enqueued prediction for {img_relpath} as {job.id}")
 
 def run_video_queue(queues = ['event_video']):
     with TunneledConnection():

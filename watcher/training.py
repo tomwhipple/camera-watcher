@@ -17,8 +17,6 @@ __all__ = ['get_labeled_data', 'get_event_stills', 'get_event_labels', 'labeled_
 def make_result_item(r) -> (pathlib.Path, str):
     return tuple([r[0].result_file_fullpath(), r[2].all_labels_as_string()])
 
-
-
 def get_labeled_data(session) -> [(pathlib.Path, str)]:
     stmt = (select(Computation, EventClassification, EventObservation)
         .join(EventObservation, Computation.event_name == EventObservation.event_name)
@@ -50,7 +48,6 @@ def labeled_as_csv()-> pathlib.Path:
                 cw.writerow([str(row[0]), row[1]])
 
         return tf.name
-
 
 # TODO: doesn't quite work yet... mismatch between formatting here and what fast.ai expects
 def labeled_as_dataframe() -> pd.DataFrame:

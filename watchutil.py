@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
-import sys
 import json
 import argparse
 import pathlib
 import requests
-import logging
 
 from datetime import datetime
 from pathlib import PurePath, Path

@@ -25,3 +25,4 @@ COPY *.py ./
 COPY watcher watcher/
 
 COPY ./etc/watcher.cfg /usr/local/etc/watcher.cfg
+COPY ./etc/model* /usr/local/etc/
