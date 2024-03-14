@@ -5,6 +5,8 @@ from sqlalchemy.orm import Mapped, declarative_base
 
 from astral.sun import sun
 
+__all__ = ['Weather', 'sunlight_from_time_for_location']
+
 Base = declarative_base()
 
 class Weather(Base):

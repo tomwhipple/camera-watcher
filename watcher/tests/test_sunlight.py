@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 from astral import LocationInfo
-from watcher.model import sunlight_from_time_for_location
+from watcher.outdoors import sunlight_from_time_for_location
 
 def test_sunlight():
 	austin = LocationInfo('austin', 'texas', 'US/Central', 30.443, -97.817)
@@ -31,10 +31,10 @@ def test_sunlight():
 def test_timezones():
 	austin = LocationInfo('austin', 'texas', 'US/Central', 30.443, -97.817)
 
-	end_of_march = datetime.fromisoformat('2022-03-30 10:00')
+	end_of_march = datetime.fromisoformat('2022-03-30 10:00-05:00')
 	assert end_of_march.astimezone(austin.tzinfo).utcoffset() == timedelta(hours= -5)
 
-	mid_january = datetime.fromisoformat('2022-01-15 13:42')
+	mid_january = datetime.fromisoformat('2022-01-15 13:42-06:00')
 	assert mid_january.astimezone(austin.tzinfo).utcoffset() == timedelta(hours= -6)
 
 	assert end_of_march.astimezone(austin.tzinfo).astimezone(timezone.utc).isoformat() == '2022-03-30T15:00:00+00:00'

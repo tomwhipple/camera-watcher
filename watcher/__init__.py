@@ -4,8 +4,9 @@ from . import connection
 from .model import *
 from .connection import *
 from .remote import *
+from .outdoors import *
 
-__all__ = (model.__all__ + connection.__all__ + remote.__all__)
+__all__ = (model.__all__ + connection.__all__ + remote.__all__ + outdoors.__all__)
 __all__.append(['setup_logging', 'get_local_time_iso'])
 
 import logging

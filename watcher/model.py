@@ -18,7 +18,7 @@ from .output import get_local_time_iso
 from .connection import application_config, in_docker
 from .outdoors import sunlight_from_time_for_location
 
-__all__ = ['EventObservation', 'EventClassification', 'LoadEventObservation', 'UniqueClassificationLabels']
+__all__ = ['EventObservation', 'EventClassification', 'Computation', 'LoadEventObservation', 'UniqueClassificationLabels']
 
 config = application_config()
 Base = declarative_base()
@@ -40,6 +40,9 @@ class Computation(Base):
     timer = 0
 
     def __init__(self, **kwargs):
+        self.success = False
+        self.computed_at = datetime.now(timezone.utc)
+
         self.__dict__.update(kwargs)
 
         self.host_info = kwargs.get('host_info',json.dumps(platform.uname()))
@@ -177,7 +180,7 @@ class EventObservation(Base):
         }
 
     def file_path(self):
-        fullpath = application_config('system','LOCAL_DATA_DIR')
+        fullpath = Path(application_config('system','LOCAL_DATA_DIR'))
         if self.video_location:
             fullpath = fullpath / self.video_location / self.video_file
         else:
