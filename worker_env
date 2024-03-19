@@ -1,6 +1,6 @@
 # source this file prior to running redis worker
 
-export VENV_DIR=pyenv-watcher
+export VENV_DIR=.venv
 
 export WATCHER_CONFIG=`pwd`/application.cfg
 
@@ -10,7 +10,7 @@ export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 if [ ! -d "$VENV_DIR" ] ; then
 	echo "didn't find $VENV_DIR dir. creating it."
 	python3 -m venv --system-site-packages $VENV_DIR
-	source pyenv-watcher/bin/activate
+	source $VENV_DIR/bin/activate
 	python3 -m pip install -r requirements.txt 
 else
 	source pyenv-watcher/bin/activate
