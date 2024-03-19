@@ -7,14 +7,16 @@ import subprocess
 from datetime import datetime, timezone
 
 from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Boolean, Integer, text, select
-from sqlalchemy.orm import relationship, declarative_base, mapped_column
+from sqlalchemy.orm import relationship, declarative_base
+
+from PIL import Image
 
 from pathlib import Path
 from astral import LocationInfo
 import pytz
 
 from .output import get_local_time_iso
-from .connection import application_config, in_docker
+from .connection import application_config, in_docker, application_path_for
 from .outdoors import sunlight_from_time_for_location
 
 __all__ = ['EventObservation', 'EventClassification', 'Computation']
@@ -103,14 +105,18 @@ class EventObservation(Base):
         return self.event_name
 
     def __repr__(self):
-        return f"<EventObservation {self.event_name}>"
+        return f"<EventObservation {self.event_name} at {self.capture_time.isoformat()}>"
 
     @property
-    def significant_frame_file(self):
+    def significant_frame_file(self) -> Path:
         success_results = [c for c in self.computations if c.method_name == 'task_save_significant_frame' and c.success]
         if len(success_results) == 0:
             return None
         return success_results[0].result_file_fullpath()
+
+    @property
+    def significant_frame(self) -> Image:
+        return Image.open(self.significant_frame_file)
     
     @property
     def all_labels_as_string(self):
@@ -264,7 +270,7 @@ class Computation(Base):
     def result_file_fullpath(self) -> Path:
         if not self.result_file:
             return None
-        return Path(application_config('system','LOCAL_DAT_DIR')) / self.result_file_location / self.result_file
+        return application_path_for( self.result_file_location ) / self.result_file
 
     def sync_select():
         return text("""

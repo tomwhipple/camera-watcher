@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from watcher import Computation, EventObservation, EventClassification
+from watcher.connection import application_config
 
 class TestModels(unittest.TestCase):
     def setUp(self):
@@ -137,6 +138,7 @@ class TestModels(unittest.TestCase):
         self.assertEqual(event.computations[0], comp)
         
         self.assertIsInstance(comp.result_file_fullpath(), Path)
+        self.assertTrue(str(comp.result_file_fullpath()).startswith(application_config('system', 'LOCAL_DATA_DIR')))
 
 if __name__ == '__main__':
     unittest.main()

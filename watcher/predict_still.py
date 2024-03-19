@@ -8,7 +8,7 @@ from rq import Worker
 
 from fastai.vision.all import load_learner
 
-from .connection import TunneledConnection, application_config, redis_connection, file_with_base_path 
+from .connection import TunneledConnection, application_config, redis_connection, application_path_for 
 from.model import EventObservation, EventClassification
 
 from . import setup_logging
@@ -41,7 +41,7 @@ def predict_from_still(img_file: str):
     return predicted_label, found_probs
 
 def task_predict_still(img_file, event_name):
-    img_file = file_with_base_path(img_file)
+    img_file = application_path_for(img_file)
     logger.debug(f"predicting {img_file} for {event_name}")
 
     if not img_file.exists():

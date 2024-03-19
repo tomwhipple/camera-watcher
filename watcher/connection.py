@@ -19,7 +19,7 @@ def in_docker() -> bool:
     return os.path.isfile('/.dockerenv') 
 
 
-__all__ = ['TunneledConnection','application_config','redis_connection','in_docker', 'file_with_base_path']
+__all__ = ['TunneledConnection','application_config','redis_connection','in_docker', 'application_path_for']
 
 def redis_connection():
     redis_host = os.environ.get('REDIS_HOST') or application_config('system','REDIS_HOST')
@@ -54,7 +54,7 @@ def application_config(section_name: str='', config_variable: str='') -> str:
 
     return cfg 
 
-def file_with_base_path(file):
+def application_path_for(file) -> Path:
     return Path(application_config('system','LOCAL_DATA_DIR')) / file
 
 def get_db_config():
