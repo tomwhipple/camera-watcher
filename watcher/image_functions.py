@@ -27,12 +27,12 @@ def fetch_video_from_file(video_file):
         .input(video_file)
         .output('pipe:', format='rawvideo', pix_fmt='rgb24')
         .run(capture_stdout=True)
-    );
+    )
     video = (
         np
         .frombuffer(out, np.uint8)
         .reshape([-1, height, width, 3])
-    );
+    )
 
     return video
 

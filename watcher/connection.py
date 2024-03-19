@@ -155,6 +155,14 @@ class TunneledConnection(object):
         if self.tunnel and self.tunnel.is_active:
             self.tunnel.close()
 
+    # def __del__(self):
+    #     self.disconnect()
+
+    # def session(self):
+    #     if not self.connection:
+    #         self.connect()
+    #     return Session(self.connection)
+
 
 def get_config_val(cfg, key, default=None):
     return os.environ.get(key) or cfg.get(key) or default

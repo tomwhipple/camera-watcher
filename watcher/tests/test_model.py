@@ -1,6 +1,7 @@
 import unittest
 
 from datetime import datetime
+from pathlib import Path
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -19,17 +20,6 @@ class TestModels(unittest.TestCase):
         for s in statements:
             self.session.execute(text(s))
         self.session.commit()
-
-    def test_computation(self):
-        # Create a Computation instance
-        comp = Computation(event_name="Test Event", method_name="Test Method")
-        self.session.add(comp)
-        self.session.commit()
-
-        # Check that the Computation was added to the database
-        comp_db = self.session.query(Computation).first()
-        self.assertEqual(comp_db.event_name, "Test Event")
-        self.assertEqual(comp_db.method_name, "Test Method")
 
     def test_event_observation(self):
         # Create an EventObservation instance
@@ -68,13 +58,85 @@ class TestModels(unittest.TestCase):
         self.assertIsInstance(classification_db.decision_time, datetime)
 
         # Check the API response dictionary
-        api_response = classification_db.api_response_dict()
+        api_response = classification_db.api_response_dict
         self.assertEqual(api_response['classification_id'], classification_db.id)
         self.assertEqual(api_response['event_observation_id'], event.id)
         self.assertEqual(api_response['label'], "Test Label")
         self.assertEqual(api_response['decider'], "Test Decider")
         self.assertEqual(api_response['confidence'], 0.8)
         self.assertEqual(api_response['decision_time'], classification_db.decision_time.isoformat())
+
+    def test_unique_labels(self):
+        # Create an EventClassification instance
+        event = EventObservation(video_file="test.mp3", scene_name="Test Scene")
+        self.session.add(event)
+        self.session.commit()
+
+        # Create multiple EventClassification instances with unique labels
+        classification0 = EventClassification(
+            label="Label 0",
+            decider="Decider 0",
+            confidence=None,
+            is_deprecated=None
+        )
+        classification1 = EventClassification(
+            label="Label 1",
+            decider="Decider 1",
+            confidence=None,
+            is_deprecated=None
+        )
+        classification2 = EventClassification(
+            label="Label 2",
+            decider="Decider 2",
+            confidence=None,
+            is_deprecated=None
+        )
+        event.classifications.extend([classification0, classification1, classification2])
+        self.session.commit()
+
+        # Call the UniqueLabels method
+        labels = EventClassification.UniqueLabels(self.session)
+
+        # Check that the returned labels are correct
+        expected_labels = ["Label 0", "Label 1", "Label 2"]
+        self.assertEqual(labels, expected_labels)
+
+    # def test_computation(self):
+    #     # Create a Computation instance
+    #     comp = Computation(event_name="Test Event", method_name="Test Method")
+    #     self.session.add(comp)
+    #     self.session.commit()
+
+    #     # Check that the Computation was added to the database
+    #     comp_db = self.session.query(Computation).first()
+    #     self.assertEqual(comp_db.event_name, "Test Event")
+    #     self.assertEqual(comp_db.method_name, "Test Method")
+
+    def test_computation(self):
+        # Create an EventObservation instance
+        event_name_val = "test_event"
+        event = EventObservation(video_file="test.mp4", scene_name="Test Scene", event_name=event_name_val)
+        self.session.add(event)
+        self.session.commit()
+
+        # Create a Computation instance
+        comp = Computation(event_name=event_name_val, 
+                           method_name="Test Method", 
+                           result_file="test_result_f12.jpg",
+                           result_file_location="test_result_location",
+                           success=True)
+        self.session.add(comp)
+        comp2 = Computation(event_name=event_name_val, method_name="Test Method", success=False)
+        self.session.add(comp2)
+        self.session.commit()
+
+        evt = EventObservation.by_name(self.session, event_name_val)
+
+        # Check that the Computation is correctly associated with the EventObservation
+        self.assertEqual(len(evt.computations), 2)
+        self.assertEqual(event.computations[0], comp)
+        
+        self.assertIsInstance(comp.result_file_fullpath(), Path)
 
 if __name__ == '__main__':
     unittest.main()
