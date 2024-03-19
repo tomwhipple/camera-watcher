@@ -30,26 +30,9 @@ DEFAULT_API_RESPONSE_PAGE_SIZE=10
 
 query_dbtest_sql = "select count(*) from event_observations"
 
-# loglev = application_config('log','LEVEL')
-# assert loglev in ['DEBUG','INFO','WARNING','ERROR','CRITICAL'], f"Invalid log level: {loglev}"
-
-# dictConfig({
-#     'version': 1,
-#     'handlers': {'wsgi': {
-#         'class': 'logging.StreamHandler',
-#         'stream': 'ext://flask.logging.wsgi_errors_stream',
-#     }},
-#     'root': {
-#         'file': application_config('log','FILE'),
-#         'level': application_config('log','LEVEL'),
-#         'handlers': ['wsgi'],
-#     }
-# })
-
 app = Flask("watcher")
 app.wsgi_app = ProxyFix(app.wsgi_app)
 app.logger = setup_logging()
-
 
 auth = HTTPBasicAuth()
 is_cli = None
@@ -61,7 +44,6 @@ def log_before():
 # @app.after_request
 # def log_after(response):
 #     app.logger.info(f"{response.status_code} - {request.url}")
-
 #     return response
 
 @app.errorhandler(InternalServerError)

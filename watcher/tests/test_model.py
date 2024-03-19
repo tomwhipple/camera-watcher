@@ -102,17 +102,6 @@ class TestModels(unittest.TestCase):
         expected_labels = ["Label 0", "Label 1", "Label 2"]
         self.assertEqual(labels, expected_labels)
 
-    # def test_computation(self):
-    #     # Create a Computation instance
-    #     comp = Computation(event_name="Test Event", method_name="Test Method")
-    #     self.session.add(comp)
-    #     self.session.commit()
-
-    #     # Check that the Computation was added to the database
-    #     comp_db = self.session.query(Computation).first()
-    #     self.assertEqual(comp_db.event_name, "Test Event")
-    #     self.assertEqual(comp_db.method_name, "Test Method")
-
     def test_computation(self):
         # Create an EventObservation instance
         event_name_val = "test_event"
