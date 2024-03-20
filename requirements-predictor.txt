@@ -1,0 +1,7 @@
+sqlalchemy>=2.0.12
+sshtunnel
+redis
+rq>=1.15.1
+pytz
+pillow
+fastai

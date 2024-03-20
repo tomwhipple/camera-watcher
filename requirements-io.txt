@@ -1,4 +1,4 @@
-sqlalchemy>=2.0.12
+flask_sqlalchemy
 sshtunnel
 passlib>=1.7.4
 Flask-HTTPAuth>=4.5.0

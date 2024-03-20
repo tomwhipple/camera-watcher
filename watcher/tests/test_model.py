@@ -8,20 +8,12 @@ from sqlalchemy.orm import sessionmaker
 
 from watcher import Computation, EventObservation, EventClassification
 from watcher.connection import application_config
+from watcher.tests.utils import setup_test_db
 
 class TestModels(unittest.TestCase):
     def setUp(self):
-        # Create a test database in memory
-        raw_sql = open('db/watcher.sql', 'r').read()
-        statements = raw_sql.split(';')
-    
-        engine = create_engine('sqlite:///:memory:')
-        Session = sessionmaker(bind=engine)
-        self.session = Session()
-        for s in statements:
-            self.session.execute(text(s))
-        self.session.commit()
-
+        self.session, _ = setup_test_db()
+        
     def test_event_observation(self):
         # Create an EventObservation instance
         event = EventObservation(video_file="test.mp4", scene_name="Test Scene")
@@ -126,8 +118,8 @@ class TestModels(unittest.TestCase):
         self.assertEqual(len(evt.computations), 2)
         self.assertEqual(event.computations[0], comp)
         
-        self.assertIsInstance(comp.result_file_fullpath(), Path)
-        self.assertTrue(str(comp.result_file_fullpath()).startswith(application_config('system', 'LOCAL_DATA_DIR')))
+        self.assertIsInstance(comp.result_file_fullpath, Path)
+        self.assertTrue(str(comp.result_file_fullpath).startswith(application_config('system', 'LOCAL_DATA_DIR')))
 
 if __name__ == '__main__':
     unittest.main()

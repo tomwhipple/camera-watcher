@@ -17,6 +17,13 @@ class APIUser(Base):
     username = Column(String(128),index = True)
     key_hash = Column(String(256))
 
+    def __init__(self, username):
+        self.username = username
+        self.key_hash = 'INVALID'
+
+    def __repr__(self):
+        return f"<APIUser {self.username}>"
+
     def reset_key(self):
         newkey = ''.join(random.choice(string.ascii_letters + string.digits) for i in range(16))
         self.key_hash = pbkdf2_sha256.hash(newkey)
@@ -24,7 +31,20 @@ class APIUser(Base):
         return newkey
 
     def verify_key(self, input_str):
+        if self.key_hash == 'INVALID':
+            return False
         return pbkdf2_sha256.verify(input_str, self.key_hash)
+
+    @staticmethod
+    def lookup_verify(session, username, key):
+        user = APIUser.lookup(session, username)
+        if not user or not user.verify_key(key):
+            return None
+        return user
+
+    @staticmethod
+    def lookup(session, username):
+        return session.query(APIUser).filter_by(username=username).first()
 
 class Upload(Base):
     __tablename__ = 'uploads'

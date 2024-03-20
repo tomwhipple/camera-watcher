@@ -9,9 +9,9 @@ from rq import Queue
 import configparser
 import sqlalchemy
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
 
 from sshtunnel import SSHTunnelForwarder
+
 
 APPLICATION_CONFIG_FILE = 'application.cfg'
 
@@ -137,16 +137,8 @@ class TunneledConnection(object):
             self.tunnel.start()
             self.config['db_host'] = self.tunnel.local_bind_address[0]
 
-        if self.config.get('db_host'):
-            if self.config.get("ssl_args"):
-                self.engine = init_tcp_sslcerts_connection_engine(self.config)
-            else:
-                self.engine = init_tcp_connection_engine(self.config)
-        elif self.config.get('db_user'):
-            self.engine = init_unix_connection_engine(self.config)
-        else:
-            self.engine = init_local_file_connection_engine(self.config)
-
+        url, config_opts = get_db_url(self.config)
+        self.engine = create_engine(url, **config_opts)
         self.connection = self.engine.connect()
         return self.connection
 
@@ -155,14 +147,9 @@ class TunneledConnection(object):
         if self.tunnel and self.tunnel.is_active:
             self.tunnel.close()
 
-    # def __del__(self):
-    #     self.disconnect()
-
-    # def session(self):
-    #     if not self.connection:
-    #         self.connect()
-    #     return Session(self.connection)
-
+    @property
+    def dbURL(self):
+        return 
 
 def get_config_val(cfg, key, default=None):
     return os.environ.get(key) or cfg.get(key) or default
@@ -180,75 +167,64 @@ def get_ssh_tunnel(db_config):
         )
     return tunnel
 
-def init_local_file_connection_engine(db_config):
-    if not os.path.isfile(db_config['db_name']):
-        raise FileNotFoundError(f"database file {db_config['db_name']} does not exist")
+def get_db_url():
+    db_config = get_db_config()
+    
+    if db_config.get('db_host'):
+        if db_config.get("ssl_args"):
+            return url_tcp_sslcerts_connection(db_config)
+        else:
+            return url_tcp_connection(db_config)
+    elif db_config.get('db_user'):
+        return url_unix_connection(db_config)
+    else:
+        return url_local_file_connection(db_config)
 
-    pool = sqlalchemy.create_engine(
-        sqlalchemy.engine.url.URL.create(
-                drivername=db_config['driver'],
-                database=db_config['db_name'],
-        ),
-        **db_config['connection_config']
-    )
-    return pool
+def url_local_file_connection(dbconfig):
+    if not os.path.isfile(dbconfig['db_name']):
+        raise FileNotFoundError(f"database file {dbconfig['db_name']} does not exist")
 
-def init_tcp_sslcerts_connection_engine(db_config):
+    return sqlalchemy.engine.url.URL.create(
+        drivername=dbconfig['driver'],
+        database=dbconfig['db_name']
+    ), dbconfig['connection_config']
 
-    pool = sqlalchemy.create_engine(
-        # Equivalent URL:
-        # mysql+pymysql://<db_user>:<db_pass>@<db_host>:<db_port>/<db_name>
-        sqlalchemy.engine.url.URL.create(
-            drivername=db_config['driver'],
-            username=db_config['db_user'],  # e.g. "my-database-user"
-            password=db_config['db_pass'],  # e.g. "my-database-password"
-            host=db_config['db_host'],  # e.g. "127.0.0.1"
-            port=db_config['db_port'],  # e.g. 3306
-            database=db_config['db_name']  # e.g. "my-database-name"
-        ),
-        connect_args={"ssl":ssl_args},
-        **db_config['connection_config']
-    )
+def url_tcp_sslcerts_connection(db_config):
+    # Equivalent URL:
+    # mysql+pymysql://<db_user>:<db_pass>@<db_host>:<db_port>/<db_name>
+    return sqlalchemy.engine.url.URL.create(
+        drivername=db_config['driver'],
+        username=db_config['db_user'],
+        password=db_config['db_pass'],
+        host=db_config['db_host'],
+        port=db_config['db_port'],
+        database=db_config['db_name'],
+        query={"ssl":True}
+    ), db_config['connection_config']
 
-    return pool
+def url_tcp_connection(db_config):
+    # Equivalent URL:
+    # mysql+pymysql://<db_user>:<db_pass>@<db_host>:<db_port>/<db_name>
+    return sqlalchemy.engine.url.URL.create(
+        drivername=db_config['driver'],
+        username=db_config['db_user'],
+        password=db_config['db_pass'],
+        host=db_config['db_host'],
+        port=db_config['db_port'],
+        database=db_config['db_name']
+    ), db_config['connection_config']
 
-
-def init_tcp_connection_engine(db_config):
-
-    pool = sqlalchemy.create_engine(
-        # Equivalent URL:
-        # mysql+pymysql://<db_user>:<db_pass>@<db_host>:<db_port>/<db_name>
-        sqlalchemy.engine.url.URL.create(
-            drivername=db_config['driver'],
-            username=db_config['db_user'],  # e.g. "my-database-user"
-            password=db_config['db_pass'],  # e.g. "my-database-password"
-            host=db_config['db_host'],  # e.g. "127.0.0.1"
-            port=db_config['db_port'],  # e.g. 3306
-            database=db_config['db_name'],  # e.g. "my-database-name"
-        ),
-        **db_config['connection_config']
-    )
-
-    return pool
-
-
-def init_unix_connection_engine(db_config):
-
-    pool = sqlalchemy.create_engine(
-        # Equivalent URL:
-        # mysql+pymysql://<db_user>:<db_pass>@/<db_name>?unix_socket=<socket_path>/<cloud_sql_instance_name>
-        sqlalchemy.engine.url.URL.create(
-            drivername=db_config['driver'],
-            username=db_config['db_user'],  # e.g. "my-database-user"
-            password=db_config['db_pass'],  # e.g. "my-database-password"
-            database=db_config['db_name'],  # e.g. "my-database-name"
-            query={
-                "unix_socket": "{}/{}".format(
-                    db_config['db_socket_dir'],  # e.g. "/cloudsql
-                    db_config['db_connection_name'])  # i.e "<PROJECT-NAME>:<INSTANCE-REGION>:<INSTANCE-NAME>"
-            }
-        ),
-        **db_config['connection_config']
-    )
-
-    return pool
+def url_unix_connection(db_config):
+    # Equivalent URL:
+    # mysql+pymysql://<db_user>:<db_pass>@/<db_name>?unix_socket=<socket_path>/<cloud_sql_instance_name>
+    return sqlalchemy.engine.url.URL.create(
+        drivername=db_config['driver'],
+        username=db_config['db_user'],
+        password=db_config['db_pass'],
+        database=db_config['db_name'],
+        query={
+            "unix_socket": "{}/{}".format(
+                db_config['db_socket_dir'],
+                db_config['db_connection_name'])
+        }
+    ), db_config['connection_config']

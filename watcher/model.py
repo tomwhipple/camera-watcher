@@ -140,7 +140,7 @@ class EventObservation(Base):
             'video_file': self.video_file,
             'capture_time': get_local_time_iso(self.capture_time),
             'scene_name': self.scene_name,
-            'video_url': self.video_url(),
+            'video_url': self.video_url,
             'labels': list(map(lambda c: c.label, self.classifications))
         }
 
@@ -245,7 +245,7 @@ class Computation(Base):
     #                            #remote_side="EventObservation.event_name")
     # observation = mapped_column(EventObservation)
 
-    # timer = 0
+    timer = 0
 
     def __init__(self, **kwargs):
         self.success = False
@@ -267,6 +267,7 @@ class Computation(Base):
     def end_timer(self):
         self.elapsed_seconds = time.process_time() - self.timer
 
+    @property
     def result_file_fullpath(self) -> Path:
         if not self.result_file:
             return None
