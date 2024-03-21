@@ -143,3 +143,6 @@ ALTER TABLE event_observations
 	ADD FOREIGN KEY (weather_id) REFERENCES weather(id);
 	
 DROP TABLE motion_events;
+
+ALTER TABLE event_observations
+	CHANGE COLUMN event_name event_name VARCHAR(100) NOT NULL UNIQUE;

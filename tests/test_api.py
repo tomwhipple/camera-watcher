@@ -1,6 +1,4 @@
 import unittest
-from flask import Flask
-from flask.testing import FlaskClient
 from api import db, create_app
 
 from base64 import b64encode
@@ -11,7 +9,6 @@ class TestAPI(unittest.TestCase):
     def setUp(self):
         app = create_app(db_url='sqlite:///:memory:', testing=True)
         
-
         app.app_context().push()
         self.app = app.test_client()
 
@@ -74,7 +71,7 @@ class TestAPI(unittest.TestCase):
         }
         response = self.app.post('/classify', headers=self.headers, json=data)
         self.assertEqual(response.status_code, 201)
-        self.assertIn('event_observation_id', response.json)
+        self.assertIn('event_observation_id', response.json[0])
 
     def test_create_event_observation(self):
         data = {

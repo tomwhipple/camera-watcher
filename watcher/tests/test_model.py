@@ -3,8 +3,7 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import IntegrityError
 
 from watcher import Computation, EventObservation, EventClassification
 from watcher.connection import application_config
@@ -13,9 +12,41 @@ from watcher.tests.utils import setup_test_db
 class TestModels(unittest.TestCase):
     def setUp(self):
         self.session, _ = setup_test_db()
+
+    def tearDown(self):
+        self.session.close()
+        
+    def test_event_observation_has_name(self):
+        event = EventObservation(video_file="test.mp4", 
+                                 scene_name="Test Scene",
+                                 event_name=None)
+        err = None
+        try:
+            self.session.add(event)
+            self.session.commit()
+        except Exception as e:
+            err = e
+        finally:
+            self.assertIsInstance(err, IntegrityError)
+
+    def test_event_observation_name_is_unique(self):
+        event1 = EventObservation(video_file="test1.mp4", 
+                                 scene_name="Test Scene",
+                                 event_name="test_event")
+        event2 = EventObservation(video_file="test2.mp4", 
+                                 scene_name="Test Scene",
+                                 event_name="test_event")
+        err = None
+        try:
+            self.session.add(event1)
+            self.session.add(event2)
+            self.session.commit()
+        except Exception as e:
+            err = e
+        finally:
+            self.assertIsInstance(err, IntegrityError)
         
     def test_event_observation(self):
-        # Create an EventObservation instance
         event = EventObservation(video_file="test.mp4", scene_name="Test Scene")
         self.session.add(event)
         self.session.commit()
@@ -24,6 +55,22 @@ class TestModels(unittest.TestCase):
         event_db = self.session.query(EventObservation).first()
         self.assertEqual(event_db.video_file, "test.mp4")
         self.assertEqual(event_db.scene_name, "Test Scene")
+
+    def test_get_uncatetorized(self):
+        # Create an EventObservation instance
+        event = EventObservation(video_file="test.mp4", 
+                                 scene_name="Test Scene", 
+                                 event_name="test_event")
+        self.session.add(event)
+        self.session.commit()
+
+        # Call the uncategorized method
+        uncategorized = EventObservation.uncategorized(self.session, before=None, limit=10,
+                                                       lighting=['daylight', 'night', 'twilight'])
+
+        # Check that the returned list is correct
+        self.assertEqual(len(uncategorized), 1)
+        self.assertEqual(uncategorized[0].id, event.id)
 
     def test_event_classification(self):
         # Create an EventObservation instance

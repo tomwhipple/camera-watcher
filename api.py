@@ -109,24 +109,13 @@ def create_app(db_url=None, db_options={}, testing=False) -> Flask:
 
         return 'ACCEPTED', 202
 
-    def fetch_uncategorized(session, before: datetime.date=datetime.now(), limit: int=1) -> [EventObservation]:
-            stmt = (
-                select(EventObservation)
-                .where(EventObservation.lighting_type.in_(['daylight','twilight']))
-                .where(EventObservation.storage_local == True)
-                .where(EventObservation.capture_time < before)
-                .where(EventObservation.id.notin_(select(EventClassification.observation_id).where(EventClassification.confidence==None).distinct()))
-                .order_by(desc(EventObservation.capture_time))
-                .limit(limit)
-            )
 
-            return session.execute(stmt).scalars().all()
 
     @app.route("/uncategorized")
     @auth.login_required
     def get_uncategorized():
 
-        before = datetime.now()
+        before = None
         before_str = request.args.get("before")
         if before_str:
             try:
@@ -136,7 +125,7 @@ def create_app(db_url=None, db_options={}, testing=False) -> Flask:
             except (TypeError, ValueError) as pe:
                 app.logger.debug(f"skipping 'before' parameter: {pe}")
 
-        observations = fetch_uncategorized(db.session, before, DEFAULT_API_RESPONSE_PAGE_SIZE)
+        observations = EventObservation.uncategorized(db.session, before, DEFAULT_API_RESPONSE_PAGE_SIZE)
 
         return api_response_for_context([o.api_response_dict for o in observations])
 
@@ -149,6 +138,7 @@ def create_app(db_url=None, db_options={}, testing=False) -> Flask:
     @auth.login_required
     def classify():
         user = g.get('flask_httpauth_user', None)
+        new_classifications = []
         for lbl in request.json.get('labels', []):
             newClassification = EventClassification(
                 observation_id = request.json.get('event_observation_id'),
@@ -156,10 +146,11 @@ def create_app(db_url=None, db_options={}, testing=False) -> Flask:
                 decider = user.username
             )
             db.session.add(newClassification)
+            new_classifications.append(newClassification)
 
         db.session.commit()
 
-        return jsonify(newClassification.api_response_dict), 201
+        return jsonify([nc.api_response_dict for nc in new_classifications]), 201
 
     @app.route("/observations/", methods=['POST'])
     @app.route("/observations", methods=['POST'])

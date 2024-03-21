@@ -6,7 +6,7 @@ import subprocess
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Boolean, Integer, text, select
+from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Boolean, Integer, text, select, desc
 from sqlalchemy.orm import relationship, declarative_base
 
 from PIL import Image
@@ -54,10 +54,25 @@ class EventObservation(Base):
     # weather: Mapped["Weather"]
     
     weather_id = Column(Integer)
+ 
+    @classmethod
+    def uncategorized(cls, session, before: None, limit: int=1, 
+                      lighting = ['daylight','twilight']):
+        stmt = (
+            select(cls)
+            # .where(cls.storage_local == True)
+            .where(cls.id.notin_(select(EventClassification.observation_id)
+                                                .where(EventClassification.confidence==None).distinct()))
+        )
+        if before:
+            stmt = stmt.where(cls.capture_time < before)
+        if lighting:
+            stmt = stmt.where(cls.lighting_type.in_(lighting))
+            
+        stmt = stmt.order_by(desc(cls.capture_time)).limit(limit)
 
-    @staticmethod
-    def fetch_recent(session, limit=10):
-        return session.query(EventObservation).order_by(EventObservation.capture_time.desc()).limit(limit).all()
+        results = session.execute(stmt).scalars().all()
+        return results
 
     @classmethod
     def by_name(cls, session, name):
@@ -124,7 +139,6 @@ class EventObservation(Base):
 
     @property
     def all_labels(self): 
-        #return set(map(lambda c: 'noise' if c.label.startswith('noise') else c.label, self.classifications))
         return set(['noise' if c.label.startswith('noise') else c.label for c in self.classifications])
 
     def boxes_for_frame(self, frame):
@@ -214,12 +228,12 @@ class EventClassification(Base):
             'confidence': self.confidence,
         }
 
-    @staticmethod
-    def UniqueLabels(session):
-        stmt = (select(EventClassification.label).distinct()
-            .where(EventClassification.is_deprecated == None)
-            .where(EventClassification.confidence == None)
-            .where(~EventClassification.label.contains(' & '))
+    @classmethod
+    def UniqueLabels(cls, session):
+        stmt = (select(cls.label).distinct()
+            .where(cls.is_deprecated == None)
+            .where(cls.confidence == None)
+            .where(~cls.label.contains(' & '))
         )
 
         results = session.execute(stmt).fetchall()

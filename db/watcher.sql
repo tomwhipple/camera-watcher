@@ -81,7 +81,7 @@ CREATE TABLE "event_observations" (
   "storage_local" tinyint(1) DEFAULT NULL,
   "storage_gcloud" tinyint(1) DEFAULT NULL,
   "video_location" varchar(100) DEFAULT NULL,
-  "event_name" varchar(100) UNIQUE DEFAULT NULL,
+  "event_name" varchar(100) UNIQUE NOT NULL,
   "noise_level" int(11) DEFAULT NULL,
   "threshold" int(11) DEFAULT NULL,
   "lighting_type" varchar(10) DEFAULT NULL,
@@ -95,28 +95,6 @@ CREATE TABLE "event_observations" (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table "motion_events"
---
-
-DROP TABLE IF EXISTS "motion_events";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE "motion_events" (
-  "id" INTEGER PRIMARY KEY NOT NULL,
-  "frame" INTEGER DEFAULT NULL,
-  "x" int(11) DEFAULT NULL,
-  "y" int(11) DEFAULT NULL,
-  "width" int(11) DEFAULT NULL,
-  "height" int(11) DEFAULT NULL,
-  "pixels" int(11) DEFAULT NULL,
-  "label_count" int(11) DEFAULT NULL,
-  "event_name" varchar(100) DEFAULT NULL,
-  "source" varchar(20) DEFAULT NULL,
-  "source_version" varchar(20) DEFAULT NULL
-);
-CREATE INDEX "idx_event_name" ON "motion_events" ("event_name");
-/*!40101 SET character_set_client = @saved_cs_client */;
-
 --
 -- Table structure for table "uploads"
 --
@@ -167,3 +145,4 @@ CREATE TABLE "weather" (
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2023-08-06 15:16:32
+
