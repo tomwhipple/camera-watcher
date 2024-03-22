@@ -3,6 +3,7 @@ from api import db, create_app
 
 from base64 import b64encode
 
+from watcher import EventObservation
 from watcher.tests.utils import setup_test_db
 
 class TestAPI(unittest.TestCase):
@@ -64,14 +65,20 @@ class TestAPI(unittest.TestCase):
         }
         response = self.app.post('/observations', headers=self.headers, json=data)
         self.assertIn(response.status_code, [200, 201])
-
+        
+        event_observation_id = response.json['event_observation_id']
+        self.assertGreater(event_observation_id, 0)
+        
         data = {
-            'labels': ['label1', 'label2'],
-            'event_observation_id': 1
+            'labels': ['label1', 'label2', 'label3'],
+            'event_observation_id': event_observation_id
         }
         response = self.app.post('/classify', headers=self.headers, json=data)
         self.assertEqual(response.status_code, 201)
-        self.assertIn('event_observation_id', response.json[0])
+        self.assertEqual([c['label'] for c in response.json], data['labels'])
+
+        evt = EventObservation.by_id(self.session,event_observation_id)
+        self.assertEqual(evt.all_labels_as_string, ' & '.join(data['labels']))
 
     def test_create_event_observation(self):
         data = {

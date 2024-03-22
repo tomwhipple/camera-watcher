@@ -25,7 +25,10 @@ def redis_connection():
     redis_host = os.environ.get('REDIS_HOST') or application_config('system','REDIS_HOST')
     return redis.Redis(host=redis_host)
 
+_parser = None
 def application_config(section_name: str='', config_variable: str='') -> str:
+    global _parser
+    
     envname = f"WATCHER_{section_name.upper()}_{config_variable.upper()}"
 
     configval = os.environ.get(envname)
@@ -40,17 +43,18 @@ def application_config(section_name: str='', config_variable: str='') -> str:
     # #configs = [c if c != None and os.path.isfile(c) for c in APPLICATION_CONFIGS]
     # configs = [c for c in APPLICATION_CONFIGS if c != None]
 
-    parser = configparser.ConfigParser()
-    parser.read(file)
+    if _parser == None:
+        _parser = configparser.ConfigParser()
+        _parser.read(file)
 
     if section_name:
-        cfg = parser[section_name]
+        cfg = _parser[section_name]
         if config_variable:
             cfg_value = cfg.get(config_variable, None)
             #logging.debug(f"using {section_name}.{config_variable} = {cfg_value}")
             return cfg_value or ''
     else:
-        cfg = parser
+        cfg = _parser
 
     return cfg 
 
@@ -137,7 +141,7 @@ class TunneledConnection(object):
             self.tunnel.start()
             self.config['db_host'] = self.tunnel.local_bind_address[0]
 
-        url, config_opts = get_db_url(self.config)
+        url, config_opts = get_db_url()
         self.engine = create_engine(url, **config_opts)
         self.connection = self.engine.connect()
         return self.connection
@@ -146,10 +150,6 @@ class TunneledConnection(object):
         self.connection.close()
         if self.tunnel and self.tunnel.is_active:
             self.tunnel.close()
-
-    @property
-    def dbURL(self):
-        return 
 
 def get_config_val(cfg, key, default=None):
     return os.environ.get(key) or cfg.get(key) or default

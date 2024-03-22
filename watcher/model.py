@@ -80,7 +80,9 @@ class EventObservation(Base):
     
     @classmethod
     def by_id(cls, session, id):
-        return session.query(cls).get(id)
+        # return session.query(cls).get(id)
+        return session.get(cls, id)
+        
 
 
     def __init__(self, **input):
@@ -127,7 +129,7 @@ class EventObservation(Base):
         success_results = [c for c in self.computations if c.method_name == 'task_save_significant_frame' and c.success]
         if len(success_results) == 0:
             return None
-        return success_results[0].result_file_fullpath()
+        return success_results[0].result_file_fullpath
 
     @property
     def significant_frame(self) -> Image:
@@ -135,7 +137,7 @@ class EventObservation(Base):
     
     @property
     def all_labels_as_string(self):
-        return ' & '.join(sorted(self.all_labels()))
+        return ' & '.join(sorted(self.all_labels))
 
     @property
     def all_labels(self): 
@@ -215,7 +217,7 @@ class EventClassification(Base):
         return self.label
 
     def __repr__(self):
-        return f"<EventClassification {self.label}>"
+        return f"<EventClassification {self.label} by {self.decider} at {self.decision_time.isoformat()}>"
 
     @property
     def api_response_dict(self):

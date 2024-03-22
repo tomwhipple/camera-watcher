@@ -138,19 +138,29 @@ def create_app(db_url=None, db_options={}, testing=False) -> Flask:
     @auth.login_required
     def classify():
         user = g.get('flask_httpauth_user', None)
-        new_classifications = []
-        for lbl in request.json.get('labels', []):
+
+        evt = EventObservation.by_id(db.session, request.json.get('event_observation_id'))
+        if not evt:
+            return jsonify({"error": "event observation not found"}), 404
+        
+        new_labels = request.json.get('labels', [])
+        
+        for lbl in new_labels:
+            if lbl in [c.label for c in evt.classifications if c.decider == user.username]: continue
             newClassification = EventClassification(
-                observation_id = request.json.get('event_observation_id'),
                 label = lbl,
-                decider = user.username
+                decider = user.username,
+                event_observation_id = evt.id
             )
-            db.session.add(newClassification)
-            new_classifications.append(newClassification)
+            evt.classifications.append(newClassification)
+        
+        for c in evt.classifications:
+            if c.decider == user.username and c.label not in new_labels: 
+                db.session.delete(c)
 
         db.session.commit()
 
-        return jsonify([nc.api_response_dict for nc in new_classifications]), 201
+        return jsonify([nc.api_response_dict for nc in evt.classifications if nc.decider == user.username]), 201
 
     @app.route("/observations/", methods=['POST'])
     @app.route("/observations", methods=['POST'])

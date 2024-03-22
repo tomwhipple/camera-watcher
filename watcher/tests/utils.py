@@ -7,10 +7,8 @@ from watcher.remote import APIUser
 def setup_test_db(engine=None) -> Session:
     if not engine:
         engine = create_engine('sqlite:///:memory:')
-    Session = sessionmaker(bind=engine)
-    session = Session()
+    session = sessionmaker(bind=engine)()
 
-    raw_sql = open('db/watcher.sql', 'r').read()
     raw_sql = open('db/watcher.sql', 'r').read()
     statements = raw_sql.split(';')
     for s in statements:

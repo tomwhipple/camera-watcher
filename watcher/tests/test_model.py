@@ -56,6 +56,8 @@ class TestModels(unittest.TestCase):
         self.assertEqual(event_db.video_file, "test.mp4")
         self.assertEqual(event_db.scene_name, "Test Scene")
 
+        # rtr2 = EventObservation.by_id(self.session, event.id)
+
     def test_get_uncatetorized(self):
         # Create an EventObservation instance
         event = EventObservation(video_file="test.mp4", 
