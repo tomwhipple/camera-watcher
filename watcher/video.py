@@ -77,7 +77,7 @@ class EventVideo(object):
             msg = f'event {self.name} not found'
             raise Exception(msg)
 
-        vidfile = self.event.file_path()
+        vidfile = self.event.file_path
 
         if not vidfile or not os.access(vidfile, os.R_OK):
             msg = f'could not read: {vidfile}'
@@ -88,7 +88,7 @@ class EventVideo(object):
 
     def probe_file(self):
         try:
-            info = ffmpeg.probe(self.event.file_path())
+            info = ffmpeg.probe(self.event.file_path)
 
             tries_remaining = 3
             while not 'streams' in info and tries_remaining > 0:
