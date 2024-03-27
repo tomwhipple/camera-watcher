@@ -146,3 +146,15 @@ DROP TABLE motion_events;
 
 ALTER TABLE event_observations
 	CHANGE COLUMN event_name event_name VARCHAR(100) NOT NULL UNIQUE;
+
+CREATE TABLE labelings (
+    id INTEGER NOT NULL, 
+    decider VARCHAR NOT NULL, 
+    decided_at DATETIME NOT NULL, 
+    labels JSON NOT NULL, 
+    mask JSON, 
+    probabilities JSON, 
+    event_id INTEGER NOT NULL, 
+    PRIMARY KEY (id), 
+    FOREIGN KEY(event_id) REFERENCES event_observations (id)
+);

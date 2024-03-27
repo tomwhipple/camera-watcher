@@ -6,8 +6,9 @@ import subprocess
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, ForeignKey, BigInteger, String, DateTime, Float, Boolean, Integer, text, select, desc
-from sqlalchemy.orm import relationship, declarative_base
+from typing import Optional, List
+from sqlalchemy import JSON, ForeignKey, Integer, Text, text, select, desc 
+from sqlalchemy.orm import relationship, mapped_column, Mapped, DeclarativeBase
 
 from PIL import Image
 
@@ -19,44 +20,35 @@ from .output import get_local_time_iso
 from .connection import application_config, in_docker, application_path_for
 from .outdoors import sunlight_from_time_for_location
 
-__all__ = ['EventObservation', 'EventClassification', 'Computation']
+__all__ = ['EventObservation', 'EventClassification', 'Computation', 'Labeling', 'IntermediateResult']
 
 config = application_config()
-Base = declarative_base()
+class WatcherBase(DeclarativeBase):
+    pass
 
-class EventObservation(Base):
+class EventObservation(WatcherBase):
     __tablename__ = 'event_observations'
-    id = Column(BigInteger, primary_key=True)
-    video_file = Column(String)
-    capture_time = Column(DateTime)
-    scene_name = Column(String)
-
-    storage_local = Column(Boolean)
-    storage_gcloud = Column(Boolean)
-    video_location = Column(String)
-
-    event_name = Column(String)
-    threshold = Column(Integer)
-    noise_level = Column(Integer)
-
-    lighting_type = Column(String)
-
-    classifications = relationship("EventClassification", back_populates='observation')
-    computations = relationship("Computation") 
-                                # #primaryjoin=lambda: EventObservation.event_name == Computation.event_name and Computation.success == True)
-                                # primaryjoin=["EventObservation.event_name == Computation.event_name", 
-                                # "and_(Computation.success == True)"])
-                                # foreign_keys=event_name,
-                                # remote_side="Computation.event_name")
-
-    # weather = relationship("Weather", foreign_keys=[id], primaryjoin=lambda: EventObservation.weather_id == Weather.id) 
-    # weather_id : Mapped[int] = mapped_column(ForeignKey("weather.id"))
-    # weather: Mapped["Weather"]
     
-    weather_id = Column(Integer)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_name: Mapped[str] = mapped_column()
+    video_file: Mapped[str] = mapped_column()
+    capture_time: Mapped[datetime] = mapped_column()
+    scene_name: Mapped[str] = mapped_column()
+    storage_local: Mapped[bool] = mapped_column()
+    video_location: Mapped[str] = mapped_column()
+    
+    threshold: Mapped[Optional[int]] = mapped_column()
+    noise_level: Mapped[Optional[int]] = mapped_column()
+    lighting_type: Mapped[Optional[str]] = mapped_column()
+
+    classifications: Mapped[List['EventClassification']] = relationship(back_populates='observation', )
+    computations: Mapped[List['Computation']] = relationship()
+
+    labelings: Mapped[List['Labeling']] = relationship("Labeling", back_populates="event")
+    results: Mapped[List['IntermediateResult']] = relationship("IntermediateResult", back_populates="event")
  
     @classmethod
-    def uncategorized(cls, session, before: None, limit: int=1, 
+    def uncategorized(cls, session, before: datetime=None, limit: int=1, 
                       lighting = ['daylight','twilight']):
         stmt = (
             select(cls)
@@ -80,10 +72,7 @@ class EventObservation(Base):
     
     @classmethod
     def by_id(cls, session, id):
-        # return session.query(cls).get(id)
         return session.get(cls, id)
-        
-
 
     def __init__(self, **input):
         self.__dict__.update(input)
@@ -196,18 +185,40 @@ where id not in (select distinct object_id from uploads where object_class = 'Ev
 order by eo.capture_time desc
 """)
 
-class EventClassification(Base):
-    __tablename__ = 'event_classifications'
-    id = Column(BigInteger, primary_key=True)
-    observation_id = Column(BigInteger, ForeignKey('event_observations.id'))
-    label = Column(String)
-    decider = Column(String)
-    decision_time = Column(DateTime)
-    confidence = Column(Float)
-    is_deprecated = Column(Boolean)
 
-    observation = relationship("EventObservation", back_populates='classifications')
-    # observation = mapped_column(EventObservation)
+class Labeling(WatcherBase):
+    __tablename__ = 'labelings'
+    
+    id: Mapped[int] = mapped_column(primary_key=True)  
+    decider: Mapped[str] = mapped_column()
+    decided_at: Mapped[datetime] = mapped_column()
+
+    labels: Mapped[List[str]] = mapped_column(JSON)
+    mask: Mapped[Optional[List[bool]]] = mapped_column(JSON)
+    probabilities: Mapped[Optional[List[float]]] = mapped_column(JSON)
+    
+    event_id = mapped_column(ForeignKey('event_observations.id'), nullable=False)
+    event: Mapped['EventObservation'] = relationship()
+
+    # vocabulary: List[str] = None
+
+    def __repr__(self):
+        return f"<Labeling {self.labels}: {self.probabilities}>"
+
+
+# deprecated
+class EventClassification(WatcherBase):
+    __tablename__ = 'event_classifications'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    observation_id: Mapped[int] = mapped_column(ForeignKey('event_observations.id'))
+    label: Mapped[str] = mapped_column()
+    decider: Mapped[str] = mapped_column()
+    decision_time: Mapped[datetime] = mapped_column()
+    confidence: Mapped[Optional[float]] = mapped_column()    
+    is_deprecated: Mapped[Optional[bool]] = mapped_column()
+
+    observation: Mapped['EventObservation'] = relationship(back_populates='classifications')
 
     def __init__(self, **input):
         self.__dict__.update(input)
@@ -242,24 +253,23 @@ class EventClassification(Base):
         labels = sorted(set(['noise' if r[0].startswith('noise') else r[0] for r in results]))
         return labels
 
-class Computation(Base):
+# deprecated
+class Computation(WatcherBase):
     __tablename__ = 'computations'
-    id = Column(BigInteger, primary_key=True)
-    event_name = Column(String, ForeignKey('event_observations.event_name'))
-    method_name = Column(String)
-    computed_at = Column(DateTime)
-    elapsed_seconds = Column(Float)
-    git_version = Column(String)
-    host_info = Column(String)
-    success = Column(Boolean)
-    result = Column(String)
-    result_file = Column(String)
-    result_file_location = Column(String)
-    # observation = relationship("EventObservation", back_populates='computations',
-    #                            primaryjoin="EventObservation.event_name == Computation.event_name",
-    #                            foreign_keys=[event_name])
-    #                            #remote_side="EventObservation.event_name")
-    # observation = mapped_column(EventObservation)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_name: Mapped[str] = mapped_column(ForeignKey('event_observations.event_name'))
+    method_name: Mapped[str] = mapped_column()
+    computed_at: Mapped[datetime] = mapped_column()
+    elapsed_seconds: Mapped[float] = mapped_column()
+    git_version: Mapped[Optional[str]] = mapped_column(Text)
+    host_info: Mapped[Optional[str]] = mapped_column(Text)
+    success: Mapped[bool] = mapped_column()
+    result: Mapped[Optional[str]] = mapped_column(Text)
+    result_file: Mapped[Optional[str]] = mapped_column()
+    result_file_location: Mapped[Optional[str]] = mapped_column()
+
+    event = relationship('EventObservation', back_populates='computations')
 
     timer = 0
 
@@ -297,3 +307,33 @@ where id not in (select distinct object_id from uploads where object_class = 'Co
 order by c.computed_at desc
 """)
 
+class IntermediateResult(WatcherBase):
+    __tablename__ = 'intermediate_results'
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    computed_at: Mapped[datetime] = mapped_column()
+    step: Mapped[str] = mapped_column()
+    info: Mapped[Optional[dict]] = mapped_column(JSON)
+    file: Mapped[Optional[str]] = mapped_column(Text)
+    
+    event_id = mapped_column(ForeignKey('event_observations.id'), nullable=False)
+    event: Mapped['EventObservation'] = relationship()
+
+    def __repr__(self):
+        return f"<{self.step} result: {self.file} at {self.computed_at}>"
+
+    @classmethod
+    def fromComputation(cls, comp: Computation):
+        if not comp.success:
+            return None
+        return cls(
+            computed_at = comp.computed_at,
+            step = comp.method_name,
+            file = str(Path(comp.result_file_location) / comp.result_file),
+            info = comp.result,
+            event_id = comp.event.id
+        )
+
+    @property
+    def absolute_path(self):
+        return application_path_for(self.file)

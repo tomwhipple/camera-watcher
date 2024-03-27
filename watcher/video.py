@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import time
 import json
@@ -15,7 +16,7 @@ import sqlalchemy
 from sqlalchemy import select
 
 from .connection import TunneledConnection, redis_connection, application_config
-from .model import EventObservation, EventClassification, Computation
+from .model import EventObservation, IntermediateResult, Computation
 
 from .image_functions import *
 from .lite_tasks import *
@@ -189,6 +190,8 @@ def find_background(cap, num_frames = NUM_INITAL_FRAMES_TO_AVERAGE):
 
 #     return sig_frame_num, f_num, sig_frame
 
+
+
 def task_save_significant_frame(name):
     if isinstance(name, list):
         name = name[0]
@@ -226,6 +229,15 @@ def task_save_significant_frame(name):
             comp.result_file_location = str(img_relpath.parent)
             comp.success = True
 
+            ir = IntermediateResult(
+                computed_at = datetime.now(),
+                step = 'task_save_significant_frame',
+                file = str(img_relpath),
+                info = result,
+                event_id = vid.event.id
+            )
+            session.add(ir)
+            
             io_queue = Queue('write_image', connection=redis_connection())
             write_job = io_queue.enqueue(task_write_image, args=(img, str(img_relpath)), 
                              retry=Retry(max=3, interval=5*60))

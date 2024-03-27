@@ -7,7 +7,6 @@ from .remote import *
 from .outdoors import *
 
 __all__ = (model.__all__ + connection.__all__ + remote.__all__ + outdoors.__all__)
-#__all__.extend(['setup_logging', 'get_local_time_iso'])
 
 import logging
 import sys

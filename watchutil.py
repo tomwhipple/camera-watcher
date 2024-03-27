@@ -21,9 +21,8 @@ from rq.job import Job
 import pytz
 from astral import LocationInfo
 
-import watcher
-from watcher import application_config, redis_connection, TunneledConnection, setup_logging
-from watcher.model import *
+from watcher import *
+from watcher import setup_logging
 
 from hardswitch import NetworkPowerSwitch
 
@@ -207,6 +206,25 @@ def uncategorized(session, limit=0):
     un = [r.api_response_dict() for r in api.fetch_uncategorized(session, limit=limit)]
     print(json.dumps(un, indent=2))
 
+def migrate_labels(session):
+    pass
+
+def migrate_stills(session):
+    prior = {}
+    stmt = (select(Computation)
+            .where(Computation.success == True)
+            .where(Computation.result_file != None)
+            .options(sqlalchemy.orm.joinedload(Computation.event)))
+    found_computations = session.execute(stmt)
+    for comp in found_computations.unique().scalars():
+        key = f"{comp.event.id}:{comp.result_file}"
+        if prior.get(key) == None:
+            prior[key] = comp
+            ir = IntermediateResult.fromComputation(comp)
+            session.add(ir)
+
+    session.commit()
+
 def main():
     parser = argparse.ArgumentParser(description='Utilites for watcher')
     parser.add_argument('action', choices=[
@@ -222,6 +240,8 @@ def main():
         'uncategorized',
         'requeue-failed',
         'logtest',
+        'migrate-labels',
+        'migrate-stills',
         'pass'])
     parser.add_argument('-d', '--input_directory', type=pathlib.Path)
     parser.add_argument('-f', '--file', type=pathlib.Path)
@@ -231,11 +251,6 @@ def main():
     parser.add_argument('sub_args', nargs='*')
 
     args = parser.parse_args()
-    # logger.setLevel("DEBUG")
-    # logger.addHandler(logging.StreamHandler(stream=sys.stdout))
-    #fileHandler = logging.FileHandler('watcher_util.log')
-    #fileHandler.setFormatter(logging.Formatter(fmt="%(asctime)s %(message)s"))
-    #logger.addHandler(fileHandler)
 
     with TunneledConnection() as tc:
         session = sqlalchemy.orm.Session(tc)
@@ -273,6 +288,10 @@ def main():
             logger.fatal("This is a test of the emergency broadcast system")
             logger.info("I'm informing you")
             logger.debug("some useless details")
+        elif args.action == 'migrate-labels':
+            migrate_labels(session)
+        elif args.action == 'migrate-stills':
+            migrate_stills(session)
         else:
             print("No action specified.")
 

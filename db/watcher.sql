@@ -146,3 +146,14 @@ CREATE TABLE "weather" (
 
 -- Dump completed on 2023-08-06 15:16:32
 
+CREATE TABLE "labelings" (
+    id INTEGER NOT NULL, 
+    decider VARCHAR NOT NULL, 
+    decided_at DATETIME NOT NULL, 
+    labels JSON NOT NULL, 
+    mask JSON, 
+    probabilities JSON, 
+    event_id INTEGER NOT NULL, 
+    PRIMARY KEY (id), 
+    FOREIGN KEY(event_id) REFERENCES event_observations (id)
+);
