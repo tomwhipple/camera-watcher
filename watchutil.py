@@ -206,8 +206,33 @@ def uncategorized(session, limit=0):
     un = [r.api_response_dict() for r in api.fetch_uncategorized(session, limit=limit)]
     print(json.dumps(un, indent=2))
 
-def migrate_labels(session):
-    pass
+def migrate_truth(session):
+    stmt = (
+        select(EventObservation)
+        .where(EventObservation.classifications != None)
+    )
+    results = session.execute(stmt)
+    for evt in results.scalars():
+        true_classifications = [c for c in evt.classifications if c.confidence is None]
+        if len(true_classifications) == 0: continue
+        
+        decided_at = true_classifications[0].decision_time
+        decider = true_classifications[0].decider
+        labels = set()
+        for c in true_classifications:
+            decided_at = max(decided_at, c.decision_time)
+            assert decider == c.decider
+            labels.add('noise' if 'noise' in c.label else c.label)
+            
+        new_labeling = Labeling(
+            decider = decider,
+            decided_at = decided_at,
+            labels = list(labels),
+            event_id = evt.id
+        )
+        session.add(new_labeling)
+        session.commit()
+            
 
 def migrate_stills(session):
     prior = {}
@@ -289,7 +314,7 @@ def main():
             logger.info("I'm informing you")
             logger.debug("some useless details")
         elif args.action == 'migrate-labels':
-            migrate_labels(session)
+            migrate_truth(session)
         elif args.action == 'migrate-stills':
             migrate_stills(session)
         else:

@@ -16,7 +16,7 @@ class JSONEncoder(json.JSONEncoder):
         if isinstance(o, datetime):
             return get_local_time_iso(o)
 
-        if type(o).__name__ in ['Computation', 'EventObservation', 'EventClassification']:
+        if type(o).__name__ in ['Computation', 'EventObservation', 'EventClassification', 'Labeling', 'IntermediateResult']:
 
             result = o.__dict__.copy()
             for k in o.__dict__.keys():

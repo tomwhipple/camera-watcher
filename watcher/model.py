@@ -51,10 +51,7 @@ class EventObservation(WatcherBase):
     def uncategorized(cls, session, before: datetime=None, limit: int=1, 
                       lighting = ['daylight','twilight']):
         stmt = (
-            select(cls)
-            # .where(cls.storage_local == True)
-            .where(cls.id.notin_(select(EventClassification.observation_id)
-                                                .where(EventClassification.confidence==None).distinct()))
+            select(cls).where(cls.labelings == None)
         )
         if before:
             stmt = stmt.where(cls.capture_time < before)
@@ -115,10 +112,7 @@ class EventObservation(WatcherBase):
 
     @property
     def significant_frame_file(self) -> Path:
-        success_results = [c for c in self.computations if c.method_name == 'task_save_significant_frame' and c.success]
-        if len(success_results) == 0:
-            return None
-        return success_results[0].result_file_fullpath
+        application_path_for(self.labelings[-1].file)
 
     @property
     def significant_frame(self) -> Image:
@@ -130,13 +124,13 @@ class EventObservation(WatcherBase):
 
     @property
     def all_labels(self): 
-        return set(['noise' if c.label.startswith('noise') else c.label for c in self.classifications])
-
-    def boxes_for_frame(self, frame):
-        boxes = []
-        for m in self.motions:
-            if m.frame == frame: boxes.append(m.box())
-        return boxes
+        labels = set()
+        for l in self.labelings:
+            if 'noise' in l.labels:
+                labels.add('noise')
+            else:
+                labels.update(l.labels)
+        return labels
 
     @property
     def api_response_dict(self):

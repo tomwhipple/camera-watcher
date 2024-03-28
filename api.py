@@ -2,6 +2,7 @@
 
 import json
 import argparse
+import re
 import pytz
 
 from datetime import datetime
@@ -25,7 +26,7 @@ from watcher.connection import get_db_url, redis_connection
 from watcher.remote import APIUser
 from watcher.lite_tasks import task_record_event, task_write_image
 
-from watcher import setup_logging, application_config
+from watcher import output, setup_logging, application_config
 
 DEFAULT_API_RESPONSE_PAGE_SIZE=10
 
@@ -144,23 +145,23 @@ def create_app(db_url=None, db_options={}, testing=False) -> Flask:
             return jsonify({"error": "event observation not found"}), 404
         
         new_labels = request.json.get('labels', [])
-        
-        for lbl in new_labels:
-            if lbl in [c.label for c in evt.classifications if c.decider == user.username]: continue
-            newClassification = EventClassification(
-                label = lbl,
-                decider = user.username,
-                event_observation_id = evt.id
-            )
-            evt.classifications.append(newClassification)
-        
-        for c in evt.classifications:
-            if c.decider == user.username and c.label not in new_labels: 
-                db.session.delete(c)
 
+        cleaned_labels = [re.sub(r'\s','_',l.strip()).lower() for l in new_labels]
+        for l in evt.labelings:
+            if l.decider == user.username:
+                db.session.delete(l)
+        
+        new_labeling = Labeling(
+            labels = cleaned_labels,
+            decider = user.username,
+            decided_at = datetime.now(),
+            event_id = evt.id
+        )
+        db.session.add(new_labeling)
+        evt.labelings.append(new_labeling)
         db.session.commit()
 
-        return jsonify([nc.api_response_dict for nc in evt.classifications if nc.decider == user.username]), 201
+        return jsonify(new_labeling.labels), 201
 
     @app.route("/observations/", methods=['POST'])
     @app.route("/observations", methods=['POST'])

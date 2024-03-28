@@ -87,8 +87,7 @@ class TestFunctional(unittest.TestCase):
         response = self.app.post('/classify', headers=self.headers, json=event_data)
         self.assertEqual(response.status_code, 201)
         
-        new_labels = [c['label'] for c in response.json]
-        self.assertListEqual(new_labels, ['label_1', 'label_3'])
+        self.assertListEqual(response.json, ['label_1', 'label_3'])
 
         response = self.app.get('/uncategorized', headers=self.headers)
         self.assertEqual(response.status_code, 200)
@@ -124,7 +123,7 @@ class TestFunctional(unittest.TestCase):
         response = self.app.post('/classify', headers=self.headers, json=event_data)
         self.assertEqual(response.status_code, 201)
 
-        self.assertListEqual([c['label'] for c in response.json], input_relabel)
+        self.assertListEqual(response.json, input_relabel)
 
         evt_R = EventObservation.by_id(db.session, evt.id)
 

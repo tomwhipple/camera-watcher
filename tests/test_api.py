@@ -75,7 +75,9 @@ class TestAPI(unittest.TestCase):
         }
         response = self.app.post('/classify', headers=self.headers, json=data)
         self.assertEqual(response.status_code, 201)
-        self.assertEqual([c['label'] for c in response.json], data['labels'])
+        self.assertTrue(response.is_json)
+
+        self.assertEqual(response.json, data['labels'])
 
         evt = EventObservation.by_id(self.session,event_observation_id)
         self.assertEqual(evt.all_labels_as_string, ' & '.join(data['labels']))

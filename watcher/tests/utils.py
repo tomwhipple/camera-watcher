@@ -1,4 +1,5 @@
 
+import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 
@@ -19,3 +20,5 @@ def setup_test_db(engine=None) -> Session:
     session.commit()
 
     return session, testuser
+
+    
