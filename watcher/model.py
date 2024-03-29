@@ -112,7 +112,7 @@ class EventObservation(WatcherBase):
 
     @property
     def significant_frame_file(self) -> Path:
-        return application_path_for(self.results[-1].file)
+        return application_path_for(self.results[-1].file) if len(self.results) else None
 
     @property
     def significant_frame(self) -> Image:
@@ -123,11 +123,12 @@ class EventObservation(WatcherBase):
         for l in self.labelings:
             if not l.probabilities:
                 return l.labels
-        return []
+        return None
 
     @property
     def true_labeling_as_string(self):
-        return ' & '.join(sorted(self.true_labeling))
+        if not self.true_labeling: return None
+        return ' & '.join(self.true_labeling)
     
     @property
     def all_labels_as_string(self):
@@ -135,13 +136,15 @@ class EventObservation(WatcherBase):
 
     @property
     def all_labels(self): 
+        if not self.labelings: return None
+
         labels = set()
         for l in self.labelings:
             if 'noise' in l.labels:
                 labels.add('noise')
             else:
                 labels.update(l.labels)
-        return labels
+        return sorted(labels)
 
     @property
     def api_response_dict(self):
@@ -151,7 +154,7 @@ class EventObservation(WatcherBase):
             'capture_time': get_local_time_iso(self.capture_time),
             'scene_name': self.scene_name,
             'video_url': self.video_url,
-            'labels': list(map(lambda c: c.label, self.classifications))
+            'labels': self.all_labels
         }
 
     @property
@@ -173,7 +176,7 @@ class EventObservation(WatcherBase):
         }
 
     @property
-    def file_path(self):
+    def file_path(self) -> Path:
         fullpath = Path(application_config('system','LOCAL_DATA_DIR'))
         if self.video_location:
             fullpath = fullpath / self.video_location / self.video_file
@@ -210,6 +213,16 @@ class Labeling(WatcherBase):
     def __repr__(self):
         return f"<Labeling {self.labels}: {self.probabilities}>"
 
+    @classmethod
+    def UniqueLabels(cls, session):
+        stmt = (select(cls.labels).distinct())
+        results = session.execute(stmt).scalars()
+
+        labels = set()
+        for r in results:
+            labels.update(r)
+
+        return sorted(labels)
 
 # deprecated
 class EventClassification(WatcherBase):
@@ -233,7 +246,7 @@ class EventClassification(WatcherBase):
         return self.label
 
     def __repr__(self):
-        return f"<EventClassification {self.label} by {self.decider} at {self.decision_time.isoformat()}>"
+        return f"<EventClassification {self.label}: {self.confidence} by {self.decider}>"
 
     @property
     def api_response_dict(self):
