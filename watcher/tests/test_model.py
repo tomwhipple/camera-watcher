@@ -171,5 +171,6 @@ class TestModels(unittest.TestCase):
         self.assertTrue(str(comp.result_file_fullpath).startswith(application_config('system', 'LOCAL_DATA_DIR')))
 
 
+
 if __name__ == '__main__':
     unittest.main()

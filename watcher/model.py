@@ -112,11 +112,22 @@ class EventObservation(WatcherBase):
 
     @property
     def significant_frame_file(self) -> Path:
-        application_path_for(self.labelings[-1].file)
+        return application_path_for(self.results[-1].file)
 
     @property
     def significant_frame(self) -> Image:
         return Image.open(self.significant_frame_file)
+
+    @property 
+    def true_labeling(self):
+        for l in self.labelings:
+            if not l.probabilities:
+                return l.labels
+        return []
+
+    @property
+    def true_labeling_as_string(self):
+        return ' & '.join(sorted(self.true_labeling))
     
     @property
     def all_labels_as_string(self):
