@@ -48,8 +48,14 @@ class EventObservation(WatcherBase):
     results: Mapped[List['IntermediateResult']] = relationship("IntermediateResult", back_populates="event")
  
     @classmethod
-    def uncategorized(cls, session, before: datetime=None, limit: int=1, 
-                      lighting = ['daylight','twilight']):
+    def uncategorized(cls, session, before: datetime=None, limit: int=1,
+                      lighting = ['daylight','twilight'],
+                      truth_only = True
+                      ):
+        #import pdb; pdb.set_trace()
+        
+        
+        
         stmt = (
             select(cls).where(cls.labelings == None)
         )
@@ -116,7 +122,12 @@ class EventObservation(WatcherBase):
 
     @property
     def significant_frame(self) -> Image:
-        return Image.open(self.significant_frame_file)
+        if self.significant_frame_file and self.significant_frame_file.exists(): 
+            try:
+                return Image.open(self.significant_frame_file)
+            except Exception as e:
+                logger.error(f"Could not open image file {self.significant_frame_file}: {e}")
+                pass
 
     @property 
     def true_labeling(self):
@@ -208,7 +219,9 @@ class Labeling(WatcherBase):
     event_id = mapped_column(ForeignKey('event_observations.id'), nullable=False)
     event: Mapped['EventObservation'] = relationship()
 
-    # vocabulary: List[str] = None
+    def __init__(self, **input):
+        super().__init__(**input)
+        if not self.decided_at: self.decided_at = datetime.now()
 
     def __repr__(self):
         return f"<Labeling {self.labels}: {self.probabilities}>"
@@ -337,6 +350,10 @@ class IntermediateResult(WatcherBase):
     event_id = mapped_column(ForeignKey('event_observations.id'), nullable=False)
     event: Mapped['EventObservation'] = relationship()
 
+    def __init__(self, **input):
+        super().__init__(**input)
+        if not self.computed_at: self.computed_at = datetime.now()
+
     def __repr__(self):
         return f"<{self.step} result: {self.file} at {self.computed_at}>"
 
@@ -351,6 +368,11 @@ class IntermediateResult(WatcherBase):
             info = comp.result,
             event_id = comp.event.id
         )
+
+    @classmethod
+    def recent(cls, session, limit=1):
+        stmt = (select(cls).order_by(desc(cls.computed_at)).limit(limit))
+        return session.execute(stmt).scalars().all()
 
     @property
     def absolute_path(self):

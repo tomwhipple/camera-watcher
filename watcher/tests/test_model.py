@@ -129,14 +129,32 @@ class TestModels(unittest.TestCase):
         self.assertEqual(len(uncategorized), 1)
         self.assertEqual(uncategorized[0].id, event.id)
 
-        labeling = Labeling(
+        model_lbl = Labeling(
+            decider='model.pkl',
+            labels=['label4'],
+            probabilities=[0.1, 0.2, 0.3, 0.9],
+            mask=[False, False, False, True],
+            event=event
+        )
+        event.labelings.append(model_lbl)
+        self.session.commit()
+
+        uncategorized = EventObservation.uncategorized(self.session, before=None, limit=10,
+                                                       lighting=['daylight', 'night', 'twilight'])
+
+
+        self.assertEqual(len(uncategorized), 1)
+        self.assertEqual(uncategorized[0].id, event.id)
+
+        true_lbl = Labeling(
             decider='testuser',
             decided_at=datetime.now(),
             labels=['label3'],
             event=event
         )
-        self.session.add(labeling)
+        self.session.add(true_lbl)
         self.session.commit()
+
         
         uncategorized = EventObservation.uncategorized(self.session, before=None, limit=10,
                                                          lighting=['daylight', 'night', 'twilight'])

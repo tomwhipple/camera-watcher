@@ -1,10 +1,6 @@
 import os
-import sys
 import redis
-import logging
 from pathlib import Path
-
-from rq import Queue
 
 import configparser
 import sqlalchemy
@@ -129,6 +125,7 @@ class TunneledConnection(object):
         self.tunnel = get_ssh_tunnel(self.config)
         self.engine = None
         self.connection = None
+        self._session = None
 
     def __enter__(self):
         return self.connect()
@@ -146,7 +143,16 @@ class TunneledConnection(object):
         self.connection = self.engine.connect()
         return self.connection
 
+    @property
+    def session(self):
+        if not self.engine:
+            self.connect()
+        if not self._session:
+            self._session = sqlalchemy.orm.Session(self.engine)
+        return self._session
+
     def disconnect(self):
+        self._session.remove()
         self.connection.close()
         if self.tunnel and self.tunnel.is_active:
             self.tunnel.close()

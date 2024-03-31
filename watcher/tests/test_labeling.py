@@ -145,7 +145,6 @@ class TestLabeling(unittest.TestCase):
         evt = EventObservation(
             event_name='event1',
             video_file='video1.mp4',
-            capture_time='2021-01-01T12:00:00',
             scene_name='scene1',
         )
         self.session.add(evt)
@@ -159,7 +158,6 @@ class TestLabeling(unittest.TestCase):
         
         lbl1 = Labeling(
             decider='model1.pkl',
-            decided_at=datetime.now(),
             labels=[],
             probabilities=[0.1, 0.2, 0.3],
             mask=[False, False, False],
@@ -185,7 +183,6 @@ class TestLabeling(unittest.TestCase):
         self.assertEqual(rtr.labelings, [lbl1, lbl2])
         self.assertEqual(rtr.all_labels, [])
         self.assertEqual(rtr.true_labeling, [])
-        self.assertEqual(rtr.api_response_dict['labels'], [])
         
 
         

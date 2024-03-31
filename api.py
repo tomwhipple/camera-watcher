@@ -110,8 +110,6 @@ def create_app(db_url=None, db_options={}, testing=False) -> Flask:
 
         return 'ACCEPTED', 202
 
-
-
     @app.route("/uncategorized")
     @auth.login_required
     def get_uncategorized():

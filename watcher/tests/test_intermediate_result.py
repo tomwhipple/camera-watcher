@@ -58,6 +58,37 @@ class TestIntermediateResult(unittest.TestCase):
         self.assertEqual(rtr_rslt.absolute_path, application_path_for('path/to/image.jpg'))
         
         self.assertEqual(rtr_evt.significant_frame_file, application_path_for('path/to/image.jpg'))
+
+    def test_recent(self):
+        evt = EventObservation(
+            event_name='event1',
+            scene_name='scene1',
+            video_location='/path/to/video',
+            video_file='video1.mp4',
+        )
+        self.session.add(evt)
+
+        ir1 = IntermediateResult(
+            step='some_step',
+            info={'key1': 'value1', 'key2': 'value2'},
+            file='path/to/image.jpg',
+            event=evt
+        )
+        self.session.add(ir1)
+
+        ir2 = IntermediateResult(
+            step='some_step',
+            info={'key1': 'value1', 'key2': 'value2'},
+            file='path/to/image2.png',
+            event=evt
+        )
+        self.session.add(ir2)
+        self.session.commit()
+
+        rtr = IntermediateResult.recent(self.session, limit=10)
+        self.assertEqual(len(rtr), 2)
+    
+    
                          
 if __name__ == '__main__':
     unittest.main()

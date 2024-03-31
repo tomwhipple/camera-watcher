@@ -1,5 +1,7 @@
+from datetime import datetime
 import unittest
 from base64 import b64encode
+from watcher.connection import application_config
 from watcher.tests.utils import setup_test_db
 from api import db, create_app
 
@@ -127,6 +129,45 @@ class TestFunctional(unittest.TestCase):
 
         evt_R = EventObservation.by_id(db.session, evt.id)
 
-        # import pdb; pdb.set_trace()
-        
         self.assertEqual(evt_R.all_labels_as_string, ' & '.join(input_relabel))
+
+    def test_app_classify_one(self):
+        evt = EventObservation(
+            video_file = 'test.mp4',
+            video_location = 'some_dir',
+            event_name = 'test_event',
+            scene_name = 'test_scene',
+        )
+        db.session.add(evt)
+        db.session.commit()
+        
+        response = self.app.get('/labels', headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.is_json)
+        self.assertEqual(response.json, [])
+        
+        expected_uncategorized = [
+           {
+               'video_file': 'test.mp4',
+               'scene_name': 'test_scene',
+               'event_observation_id': evt.id,
+               'video_url': application_config('system','BASE_STATIC_PUBLIC_URL') + '/some_dir/test.mp4',
+                'labels': None
+               } 
+        ]
+        
+        response = self.app.get('/uncategorized', headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.is_json)
+        self.assertEqual(len(response.json), 1)
+
+        self.assertIsNotNone(response.json[0]['capture_time'])
+        for k, v in expected_uncategorized[0].items(): 
+            self.assertEqual(response.json[0][k], v)
+        
+
+
+
+
+if __name__ == '__main__':
+    unittest.main()
