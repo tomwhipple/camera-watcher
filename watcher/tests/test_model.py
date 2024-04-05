@@ -117,7 +117,6 @@ class TestModels(unittest.TestCase):
         classification = EventClassification(
             label="Test Label",
             decider="Test Decider",
-            confidence=0.8,
             is_deprecated=False
         )
         event.classifications.append(classification)
@@ -126,7 +125,7 @@ class TestModels(unittest.TestCase):
         uncategorized = EventObservation.uncategorized(self.session, before=None, limit=10,
                                                        lighting=['daylight', 'night', 'twilight'])
 
-        self.assertEqual(len(uncategorized), 1)
+        self.assertEqual(len(uncategorized), 1, "expect not to use classification")
         self.assertEqual(uncategorized[0].id, event.id)
 
         model_lbl = Labeling(
@@ -143,7 +142,7 @@ class TestModels(unittest.TestCase):
                                                        lighting=['daylight', 'night', 'twilight'])
 
 
-        self.assertEqual(len(uncategorized), 1)
+        self.assertEqual(len(uncategorized), 1, "expect to use labeling")
         self.assertEqual(uncategorized[0].id, event.id)
 
         true_lbl = Labeling(

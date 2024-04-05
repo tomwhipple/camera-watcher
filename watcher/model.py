@@ -52,13 +52,12 @@ class EventObservation(WatcherBase):
                       lighting = ['daylight','twilight'],
                       truth_only = True
                       ):
-        #import pdb; pdb.set_trace()
         
+        exclude = select(Labeling.event_id).distinct()
+        if truth_only: exclude = exclude.where(Labeling.probabilities == None)
         
-        
-        stmt = (
-            select(cls).where(cls.labelings == None)
-        )
+        stmt = select(cls).where(cls.id.notin_(exclude))
+
         if before:
             stmt = stmt.where(cls.capture_time < before)
         if lighting:
