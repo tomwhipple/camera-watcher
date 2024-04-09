@@ -1,22 +1,14 @@
 import unittest
-import os
 
 from datetime import datetime
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from watcher.connection import application_path_for
 from watcher.model import WatcherBase, IntermediateResult, EventObservation
-from watcher.tests.utils import setup_test_db
+from watcher.tests.utils import create_db_from_object_model
 
 class TestIntermediateResult(unittest.TestCase):
     def setUp(self):
-        os.unlink('test.sqlite3')
-        engine = create_engine('sqlite:///test.sqlite3', echo=False)
-        #self.session, _ = setup_test_db(engine)
-        self.session = sessionmaker(bind=engine)()
-        
-        WatcherBase.metadata.create_all(engine)
+        self.session = create_db_from_object_model(WatcherBase)
 
     def tearDown(self):
         self.session.close()
@@ -55,8 +47,10 @@ class TestIntermediateResult(unittest.TestCase):
         self.assertEqual(rtr_rslt.file, 'path/to/image.jpg')
         self.assertEqual(rtr_rslt.event.id, evt.id)
         
-        self.assertEqual(rtr_rslt.absolute_path, application_path_for('path/to/image.jpg'))
+        self.assertIsInstance(rtr_rslt.info, dict)
+        self.assertNotIsInstance(rtr_rslt.info, str)
         
+        self.assertEqual(rtr_rslt.absolute_path, application_path_for('path/to/image.jpg'))
         self.assertEqual(rtr_evt.significant_frame_file, application_path_for('path/to/image.jpg'))
 
     def test_recent(self):

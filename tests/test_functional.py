@@ -2,7 +2,7 @@ from datetime import datetime
 import unittest
 from base64 import b64encode
 from watcher.connection import application_config
-from watcher.tests.utils import setup_test_db
+from watcher.tests.utils import create_db_from_sql
 from api import db, create_app
 
 from watcher import EventClassification, EventObservation
@@ -15,7 +15,7 @@ class TestFunctional(unittest.TestCase):
         self.app_dbg = app
         self.app = app.test_client()
 
-        _, self.apiuser = setup_test_db(db.engine)
+        _, self.apiuser = create_db_from_sql(db.engine)
 
         key = self.apiuser.reset_key()
         db.session.commit()

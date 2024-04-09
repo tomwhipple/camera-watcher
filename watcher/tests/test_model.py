@@ -8,11 +8,11 @@ from sqlalchemy.exc import IntegrityError
 
 from watcher import Computation, EventObservation, EventClassification, Labeling
 from watcher.connection import application_config
-from watcher.tests.utils import setup_test_db
+from watcher.tests.utils import create_db_from_sql
 
 class TestModels(unittest.TestCase):
     def setUp(self):
-        self.session, _ = setup_test_db()
+        self.session, _ = create_db_from_sql()
 
     def tearDown(self):
         self.session.close()

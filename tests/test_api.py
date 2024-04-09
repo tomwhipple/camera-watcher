@@ -4,7 +4,7 @@ from api import db, create_app
 from base64 import b64encode
 
 from watcher import EventObservation
-from watcher.tests.utils import setup_test_db
+from watcher.tests.utils import create_db_from_sql
 
 class TestAPI(unittest.TestCase):
     def setUp(self):
@@ -13,7 +13,7 @@ class TestAPI(unittest.TestCase):
         app.app_context().push()
         self.app = app.test_client()
 
-        self.session, self.apiuser = setup_test_db(db.engine)
+        self.session, self.apiuser = create_db_from_sql(db.engine)
 
         key = self.apiuser.reset_key()
         self.session.commit()

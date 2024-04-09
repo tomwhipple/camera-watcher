@@ -1,21 +1,13 @@
 import unittest
-import os
 
 from datetime import datetime
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from watcher.model import EventClassification, Labeling, WatcherBase, EventObservation
-from watcher.tests.utils import setup_test_db
+from watcher.tests.utils import create_db_from_object_model
 
 class TestLabeling(unittest.TestCase):
     def setUp(self):
-        os.unlink('test.sqlite3')
-        engine = create_engine('sqlite:///test.sqlite3', echo=False)
-        self.session, _ = setup_test_db(engine)
-        self.session = sessionmaker(bind=engine)()
-        
-        # WatcherBase.metadata.create_all(engine)
+        self.session = create_db_from_object_model(WatcherBase)
 
     def tearDown(self):
         self.session.close()
@@ -125,7 +117,7 @@ class TestLabeling(unittest.TestCase):
         )
         self.session.add(l2)
         c1 = EventClassification(
-            classifier='testuser',
+            decider='testuser',
             classified_at=datetime.now(),
             label='class3',
             confidence=0.9,

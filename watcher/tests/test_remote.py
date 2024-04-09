@@ -4,12 +4,12 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from watcher.remote import APIUser
-from watcher.tests.utils import setup_test_db
+from watcher.tests.utils import create_db_from_sql
 
 class TestAPIUser(unittest.TestCase):
     def setUp(self):
         # Create a test database in memory
-        self.session, _ = setup_test_db()
+        self.session, _ = create_db_from_sql()
         
     def test_newuser(self):
         newuser = APIUser(username="newuser")
