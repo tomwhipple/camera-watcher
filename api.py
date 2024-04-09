@@ -11,7 +11,7 @@ from flask import *
 from flask_httpauth import HTTPBasicAuth
 from flask_sqlalchemy import SQLAlchemy
 
-from sqlalchemy import select, desc
+from sqlalchemy import select
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.exc import IntegrityError
 
@@ -33,32 +33,35 @@ DEFAULT_API_RESPONSE_PAGE_SIZE=10
 db = SQLAlchemy(model_class=DeclarativeBase)
 
 def create_app(db_url=None, db_options={}, testing=False) -> Flask:
-    
-    if not db_url:
-        db_url, db_options = get_db_url()
-    
-    app = Flask("watcher")
-    app.wsgi_app = ProxyFix(app.wsgi_app)
-    app.logger = setup_logging()
+    try:
+        if not db_url:
+            db_url, db_options = get_db_url()
+        
+        app = Flask("watcher")
+        app.wsgi_app = ProxyFix(app.wsgi_app)
+        app.logger = setup_logging()
 
-    app.logger.debug(f"using db url: {db_url} with options: {db_options}")
-    app.config['SQLALCHEMY_DATABASE_URI'] = db_url
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = db_options
-    app.config['TESTING'] = testing
+        app.logger.debug(f"using db url: {db_url} with options: {db_options}")
+        app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = db_options
+        app.config['TESTING'] = testing
 
-    db.init_app(app) 
-    app.is_cli = False
+        db.init_app(app) 
+        app.is_cli = False
 
-    auth = HTTPBasicAuth()
+        auth = HTTPBasicAuth()
+    except Exception as e:
+        print(f"Error on create_app: {e}")
+        exit(1)
 
     @app.before_request
     def log_before():
         app.logger.debug('Headers: %s', request.headers)
 
-    # @app.after_request
-    # def log_after(response):
-    #     app.logger.info(f"{response.status_code} - {request.url}")
-    #     return response
+    @app.after_request
+    def log_after(response):
+        app.logger.debug(f"{response.status_code} - {request.url}")
+        return response
 
     @app.errorhandler(InternalServerError)
     def log_internal_error(e):
@@ -215,6 +218,8 @@ def create_app(db_url=None, db_options={}, testing=False) -> Flask:
         return None
 
     return app
+
+app = create_app()
 
 if __name__ == "__main__":
 
