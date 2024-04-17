@@ -180,7 +180,9 @@ def create_app(db_url=None, db_options={}, testing=False) -> Flask:
             db.session.add(new_observation)
             db.session.commit()
             response_code = 201
-            response_body = jsonify(new_observation.api_response_dict)
+            # import pdb; pdb.set_trace()
+            rd = new_observation.api_response_dict
+            response_body = jsonify(rd)
 
         except IntegrityError as ie:
             session.rollback()

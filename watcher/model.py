@@ -115,10 +115,12 @@ class EventObservation(WatcherBase):
     def __repr__(self):
         return f"<EventObservation {self.event_name} at {self.capture_time.isoformat()}>"
 
+    #deprecate??
     @property
     def significant_frame_file(self) -> Path:
         return application_path_for(self.results[-1].file) if len(self.results) else None
 
+    #deprecate??
     @property
     def significant_frame(self) -> Image:
         if self.significant_frame_file and self.significant_frame_file.exists(): 
@@ -157,6 +159,8 @@ class EventObservation(WatcherBase):
         return sorted(labels)
 
     @property
+
+    @property
     def api_response_dict(self):
         return {
             'event_observation_id': self.id,
@@ -164,7 +168,8 @@ class EventObservation(WatcherBase):
             'capture_time': get_local_time_iso(self.capture_time),
             'scene_name': self.scene_name,
             'video_url': self.video_url,
-            'labels': self.all_labels
+            'labels': self.all_labels,
+            # 'significant_frame_number': self.
         }
 
     @property
@@ -236,7 +241,7 @@ class Labeling(WatcherBase):
 
         return sorted(labels)
 
-# deprecated
+#@DeprecationWarning
 class EventClassification(WatcherBase):
     __tablename__ = 'event_classifications'
 
@@ -283,7 +288,7 @@ class EventClassification(WatcherBase):
         labels = sorted(set(['noise' if r[0].startswith('noise') else r[0] for r in results]))
         return labels
 
-# deprecated
+#@PendingDeprecationWarning
 class Computation(WatcherBase):
     __tablename__ = 'computations'
 

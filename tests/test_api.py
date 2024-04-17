@@ -4,6 +4,7 @@ from api import db, create_app
 from base64 import b64encode
 
 from watcher import EventObservation
+from watcher.model import IntermediateResult
 from watcher.tests.utils import create_db_from_sql
 
 class TestAPI(unittest.TestCase):
@@ -92,6 +93,38 @@ class TestAPI(unittest.TestCase):
         response = self.app.post('/observations', headers=self.headers, json=data)
         self.assertIn(response.status_code, [200, 201])
         self.assertIn('event_observation_id', response.json)
+
+    def test_significant_frame(self):
+        data = {
+            'filetype': 8,
+            'event_name': 'test_event',
+            'video_file': 'test_video.mp4',
+            'scene_name': 'test_scene'
+        }
+        response = self.app.post('/observations', headers=self.headers, json=data)
+        self.assertIn(response.status_code, [200, 201])
+
+        evt_id=response.json['event_observation_id']
+        self.assertIsInstance(evt_id, int)
+
+        ir = IntermediateResult(
+            step='task_save_significant_frame',
+            event_id=evt_id,
+            info={"duration": 13.826367, "most_significant_frame": 77, "number_of_frames": 215},
+            file='test.jpg'
+        )
+        db.session.add(ir)
+        db.session.commit()
+
+        response = self.app.get('/uncategorized', headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        respitem = response.json[0]
+        self.assertIsInstance(respitem, dict)
+
+        self.assertDictContainsSubset({
+            'significant_frame_number':77,
+            'significant_frame_image':'test.jpg'
+        },respitem)
 
 if __name__ == '__main__':
     unittest.main()
